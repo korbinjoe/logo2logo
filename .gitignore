@@ -1,0 +1,6 @@
+outputs/
+.DS_Store
+node_modules/
+.venv/
+models/
+.runtime/
