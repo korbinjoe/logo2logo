@@ -4,3 +4,12 @@ node_modules/
 .venv/
 models/
 .runtime/
+
+.env
+.env.*
+!.env.example
+
+dist/
+.playwright-cli/
+
+.vercel/

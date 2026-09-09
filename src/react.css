@@ -1,0 +1,25 @@
+/* Preserve native hidden semantics where canvas/layout styles set display. */
+.canvas canvas[hidden] {
+  display: none;
+}
+
+html {
+  scroll-padding-top: calc(var(--masthead-height, 90px) + 16px);
+}
+.masthead {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+[data-theme="mint"] .masthead {
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+}
+.masthead .theme-panel {
+  max-height: min(720px, calc(100dvh - var(--masthead-height, 90px) - 36px));
+}
+@media (max-width: 760px) {
+  .masthead .theme-panel {
+    top: calc(var(--masthead-height, 90px) + 10px);
+  }
+}

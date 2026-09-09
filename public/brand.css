@@ -1,0 +1,17 @@
+/* One wordmark on wide screens; one recognizable symbol in compact navigation. */
+.brand picture{display:block;line-height:0}
+.brand img{display:block;object-fit:contain;width:164px;height:38px}
+.masthead .brand img{width:164px;height:38px}
+footer .brand img{width:138px;height:32px}
+.checkout-shell .brand img{width:174px;height:40px}
+@media(max-width:760px){
+  .brand--responsive{min-width:44px;min-height:44px;justify-content:center}
+  .masthead .brand.brand--responsive img,.checkout-shell .brand.brand--responsive img{width:40px;height:28px}
+  .masthead{display:grid;grid-template-columns:44px minmax(0,1fr) auto auto;grid-template-areas:"brand space language account" "navigation navigation social appearance";align-items:center;column-gap:10px}
+  .masthead .brand{grid-area:brand}
+  .masthead .language-select{grid-area:language;justify-self:end}
+  .masthead .account-button{grid-area:account;justify-self:end}
+  .masthead nav{grid-area:navigation;gap:12px}
+  .masthead .social-links{grid-area:social;gap:12px}
+  .masthead .appearance{grid-area:appearance;justify-self:end}
+}

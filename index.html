@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#f5f3ed" />
+    <meta
+      name="description"
+      content="Explore a distinctive logo for your brand, inspired by the visual styles you love."
+    />
+    <title>Logo2logo — Give your idea a shape.</title>
+    <script>
+      try {
+        const t = localStorage.getItem("logo2logo-theme");
+        if (
+          [
+            "light",
+            "dark",
+            "play",
+            "swiss",
+            "blueprint",
+            "mint",
+            "terminal",
+            "arcade",
+            "editorial",
+            "orbital",
+            "bauhaus",
+            "collage",
+            "cinema",
+          ].includes(t)
+        )
+          document.documentElement.dataset.theme = t;
+      } catch {}
+    </script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/themes.css" />
+    <link rel="stylesheet" href="/explorations.css" />
+    <link rel="stylesheet" href="/commerce.css" />
+    <link rel="stylesheet" href="/creative-themes.css" />
+    <link rel="stylesheet" href="/brand.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

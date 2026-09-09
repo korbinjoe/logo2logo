@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtemp,writeFile,rm} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-import {refinementSource} from '../lib/reference-edit.js';
+import {refinementSource} from '../lib/reference-edit.ts';
 test('refinement only accepts an existing reviewed generated image',async t=>{
   const dir=await mkdtemp(join(tmpdir(),'logo-refine-test-'));t.after(()=>rm(dir,{recursive:true,force:true}));
   const id='12345678-1234-1234-1234-123456789abc';

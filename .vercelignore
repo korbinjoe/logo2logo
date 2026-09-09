@@ -1,0 +1,12 @@
+.env
+.env.*
+.git
+.venv
+.runtime
+models
+outputs
+node_modules
+.playwright-cli
+test
+docs
+dist

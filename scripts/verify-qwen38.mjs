@@ -1,9 +1,10 @@
 // Explicit local GPU integration check; does not generate or overwrite logo assets.
 import assert from 'node:assert/strict';
-import {DEFAULT_LOCAL_MODEL,localModel,thinkingOptions} from '../lib/local-model.js';
-import {planDesign} from '../lib/design-plan.js';
-import {describeReference,reviewImage} from '../lib/visual-review.js';
+import {localModel,thinkingOptions} from '../lib/local-model.ts';
+import {planDesign} from '../lib/design-plan.ts';
+import {describeReference,reviewImage} from '../lib/visual-review.ts';
 
+const DEFAULT_LOCAL_MODEL='qwen3.8:latest';
 const url=process.env.OLLAMA_URL || 'http://127.0.0.1:11434';
 assert.ok(!process.env.OLLAMA_PLANNER || process.env.OLLAMA_PLANNER===DEFAULT_LOCAL_MODEL,'Unset the planner override to verify Qwen 3.8');
 assert.ok(!process.env.OLLAMA_VISION || process.env.OLLAMA_VISION===DEFAULT_LOCAL_MODEL,'Unset the vision override to verify Qwen 3.8');

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtemp,readFile,readdir,stat,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {createLogger,requestContext} from '../lib/runtime-log.js';
+import {createLogger,requestContext} from '../lib/runtime-log.ts';
 test('logs correlate requests, redact secrets/images, and rotate with private permissions',async()=>{
   const dir=await mkdtemp(join(tmpdir(),'forma-log-test-'));
   try {

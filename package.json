@@ -4,14 +4,45 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --watch server.js",
-    "start": "node server.js",
-    "test": "node --test"
+    "dev": "node --watch server.ts --dev",
+    "start": "node server.ts",
+    "test": "npm run build && node --test test/*.test.js",
+    "setup:reference": "node scripts/setup-reference.mjs",
+    "build": "npm run typecheck && vite build",
+    "typecheck": "tsc --noEmit && npm run typecheck:server",
+    "prestart": "npm run build",
+    "test:unit": "node --test test/*.test.js",
+    "format": "prettier --write src lib api server.ts scripts/cloud-server.ts vite.config.ts tsconfig*.json index.html checkout.html",
+    "format:check": "prettier --check src lib api server.ts scripts/cloud-server.ts vite.config.ts tsconfig*.json index.html checkout.html",
+    "db:migrate": "node scripts/migrate-cloud.mjs",
+    "dev:cloud": "node scripts/cloud-server.ts",
+    "check:cloud": "node scripts/check-cloud.mjs",
+    "check:bundle": "node scripts/check-bundle.mjs",
+    "typecheck:server": "tsc -p tsconfig.server.json"
   },
   "engines": {
-    "node": ">=20"
+    "node": "24.x"
   },
   "dependencies": {
-    "sharp": "^0.35.4"
+    "@aws-sdk/client-s3": "^3.1128.0",
+    "@fal-ai/client": "^1.10.1",
+    "@libsql/client": "^0.18.0",
+    "@paddle/paddle-node-sdk": "^3.10.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "sharp": "^0.35.4",
+    "three": "0.186.0",
+    "undici": "8.10.2"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@types/three": "0.185.4",
+    "@vercel/nft": "^1.11.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "prettier": "^3.9.6",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2"
   }
 }

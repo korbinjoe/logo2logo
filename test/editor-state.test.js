@@ -3,7 +3,15 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { editorState } from '../lib/editor-state.js';
+import { editorState } from '../lib/editor-state.ts';
+
+test('fresh checkout explains how to install the missing reference backend', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'logo-editor-empty-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const state = await editorState({ root, modelPath: '' });
+  assert.equal(state.state, 'unavailable');
+  assert.match(state.detail, /npm run setup:reference/);
+});
 
 async function fixture(t) {
   const root = await mkdtemp(join(tmpdir(), 'logo-editor-test-'));

@@ -1,0 +1,167 @@
+/* Full-bleed atmosphere is independent of every theme's foreground layout. */
+.studio.has-atmosphere {
+  position: relative;
+  isolation: isolate;
+}
+.has-atmosphere > :is(.hero, .workflow, .scene-art) {
+  position: relative;
+  z-index: 1;
+}
+.hero-atmosphere {
+  --atmosphere-warm: #eca47f;
+  --atmosphere-cool: #879bd7;
+  --atmosphere-opacity: 0.48;
+  position: absolute;
+  z-index: 0;
+  left: var(--atmosphere-left, calc(50% - 50vw));
+  width: var(--atmosphere-width, 100vw);
+  top: -36px;
+  height: calc(100% + 130px);
+  min-height: 440px;
+  overflow: hidden;
+  pointer-events: none;
+  contain: layout paint;
+  mask-image: linear-gradient(
+    transparent,
+    #000 12%,
+    #000 70%,
+    transparent 100%
+  );
+}
+.atmosphere-canvas,
+.atmosphere-glow,
+.atmosphere-grain {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.atmosphere-canvas {
+  opacity: var(--atmosphere-opacity);
+  /* A quiet pocket behind the heading, with more depth across the edges. */
+  mask-image: linear-gradient(
+    100deg,
+    #000 0%,
+    #0008 21%,
+    #0005 38%,
+    #000c 65%,
+    #000 100%
+  );
+}
+.atmosphere-glow {
+  background:
+    radial-gradient(
+      ellipse at 88% 25%,
+      color-mix(in srgb, var(--atmosphere-cool) 19%, transparent),
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse at 14% 76%,
+      color-mix(in srgb, var(--atmosphere-warm) 23%, transparent),
+      transparent 53%
+    );
+}
+.atmosphere-grain {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.86' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23888' filter='url(%23n)' opacity='.25' d='M0 0h160v160H0z'/%3E%3C/svg%3E");
+  opacity: 0.055;
+}
+.hero-atmosphere[data-rendered="false"] .atmosphere-canvas {
+  display: none;
+}
+.atmosphere-motion {
+  position: absolute;
+  right: 3px;
+  bottom: 4px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 8px 10px;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  font: 10px var(--sans);
+}
+.atmosphere-motion:hover:not(:disabled) {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--paper) 65%, transparent);
+}
+.atmosphere-motion:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.hero-atmosphere[data-rendered="false"] ~ .atmosphere-motion {
+  visibility: hidden;
+}
+[data-theme="dark"] .hero-atmosphere {
+  --atmosphere-warm: #cc805d;
+  --atmosphere-cool: #7299d7;
+  --atmosphere-opacity: 0.3;
+}
+[data-theme="blueprint"] .hero-atmosphere {
+  --atmosphere-warm: #3d88bd;
+  --atmosphere-cool: #a1c7e8;
+  --atmosphere-opacity: 0.28;
+}
+[data-theme="mint"] .hero-atmosphere {
+  --atmosphere-warm: #86b390;
+  --atmosphere-cool: #aac8b8;
+}
+[data-theme="terminal"] .hero-atmosphere {
+  --atmosphere-warm: #4e7e46;
+  --atmosphere-cool: #acc87f;
+  --atmosphere-opacity: 0.2;
+}
+[data-theme="orbital"] .hero-atmosphere {
+  --atmosphere-warm: #668fc8;
+  --atmosphere-cool: #a1bfdc;
+  --atmosphere-opacity: 0.26;
+}
+[data-theme="cinema"] .hero-atmosphere {
+  --atmosphere-warm: #ce955e;
+  --atmosphere-cool: #816c86;
+  --atmosphere-opacity: 0.28;
+}
+[data-theme="swiss"] .hero-atmosphere {
+  --atmosphere-warm: #79a4f8;
+  --atmosphere-cool: #ddd8b0;
+  --atmosphere-opacity: 0.25;
+}
+[data-theme="play"] .hero-atmosphere,
+[data-theme="arcade"] .hero-atmosphere {
+  --atmosphere-warm: #f6b740;
+  --atmosphere-cool: #bd93be;
+  --atmosphere-opacity: 0.27;
+}
+[data-theme="collage"] .hero-atmosphere {
+  --atmosphere-warm: #dca17e;
+  --atmosphere-cool: #a3a2c5;
+}
+[data-theme="bauhaus"] .hero-atmosphere,
+[data-theme="editorial"] .hero-atmosphere {
+  --atmosphere-opacity: 0.3;
+}
+/* Existing illustrated themes place their workflow at the bottom. Reserve a
+   small control gutter without moving their art or changing the grid. */
+html[data-theme] .studio.has-atmosphere {
+  padding-bottom: max(38px, 2.5vw);
+}
+[data-theme="swiss"] .atmosphere-motion {
+  color: #d6ddff;
+}
+@media (max-width: 760px) {
+  .hero-atmosphere {
+    min-height: 470px;
+    height: calc(100% + 90px);
+    top: -22px;
+  }
+  .atmosphere-canvas {
+    opacity: calc(var(--atmosphere-opacity) * 0.7);
+    mask-image: linear-gradient(110deg, #0009, #0005 50%, #000);
+  }
+  .atmosphere-motion {
+    font-size: 9px;
+  }
+}

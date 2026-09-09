@@ -12,7 +12,7 @@ const constructions=['Two equal-width vertical stems joined by one rising diagon
 const mock=http.createServer(async(req,res)=>{
   res.setHeader('content-type','application/json');
   if(req.url==='/api/version')return res.end(JSON.stringify({version:'isolated-ui-fixture'}));
-  if(req.url==='/api/tags')return res.end(JSON.stringify({models:[{name:'qwen3.8:latest',capabilities:['completion','vision']},{name:'x/flux2-klein:latest'}]}));
+  if(req.url==='/api/tags')return res.end(JSON.stringify({models:[{name:'qwen3-vl:8b',capabilities:['completion','vision']},{name:'x/flux2-klein:latest'}]}));
   let raw='';for await(const chunk of req)raw+=chunk;const body=JSON.parse(raw);
   if(req.url==='/api/generate')return res.end(JSON.stringify({done:true,image:fixture})+'\n');
   if(body.messages.some(message=>message.images))return res.end(JSON.stringify({message:{content:JSON.stringify({observed:'fixture image, not generated for this test',subjectMatches:false,structuralProblem:false,reason:'隔离 UI 测试图，不是实际生成结果。'})}}));
@@ -22,7 +22,7 @@ const mock=http.createServer(async(req,res)=>{
   res.end(JSON.stringify({message:{content:JSON.stringify(spec)},done_reason:'stop'}));
 });
 mock.listen(0,'127.0.0.1');await once(mock,'listening');
-const child=spawn(process.execPath,['server.js'],{stdio:'inherit',env:{...process.env,PORT:'0',OLLAMA_URL:`http://127.0.0.1:${mock.address().port}`,OLLAMA_PLANNER:'qwen3.8:latest',OLLAMA_VISION:'qwen3.8:latest',LOG_DIR:join(directory,'logs'),OUTPUT_DIR:join(directory,'outputs')}});
+const child=spawn(process.execPath,['server.ts'],{stdio:'inherit',env:{...process.env,PORT:'0',OLLAMA_URL:`http://127.0.0.1:${mock.address().port}`,OLLAMA_PLANNER:'qwen3-vl:8b',OLLAMA_VISION:'qwen3-vl:8b',LOG_DIR:join(directory,'logs'),OUTPUT_DIR:join(directory,'outputs')}});
 console.log(JSON.stringify({temporaryDirectory:directory,childPid:child.pid}));
 let stopping=false;
 const stop=()=>{if(stopping)return;stopping=true;child.kill('SIGTERM');mock.closeAllConnections();mock.close();};

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createTerritories, negativePrompt, scoreConcept } from '../lib/creative-director.js';
+import { createTerritories, negativePrompt, scoreConcept } from '../lib/creative-director.ts';
 
 test('creates three genuinely distinct creative territories', () => {
   const concepts = createTerritories({ name: 'Aster', category: 'robotics', seed: 10 });

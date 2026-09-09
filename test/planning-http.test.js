@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import {spawn} from 'node:child_process';
 import {once} from 'node:events';
-import {mkdtemp,readFile,rm} from 'node:fs/promises';
+import {mkdtemp,readFile,rm,mkdir,writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {setTimeout as delay} from 'node:timers/promises';
@@ -19,9 +19,11 @@ test('HTTP planning reports exact field failures; resume keeps IDs and only call
   const directory=await mkdtemp(join(tmpdir(),'forma-http-test-'));let fail=true,blockModel=false,releaseModel,modelStarted;const calls=[];
   const fake=http.createServer(async(req,res)=>{
     res.setHeader('content-type','application/json');
-    if(req.url==='/api/tags')return res.end(JSON.stringify({models:[{name:'qwen3.8:latest',capabilities:['completion','vision']}]}));
+    if(req.url==='/api/tags')return res.end(JSON.stringify({models:[{name:'qwen3-vl:8b',capabilities:['completion','vision']}]}));
     if(req.url==='/api/version')return res.end(JSON.stringify({version:'test'}));
+    if(req.url==='/api/generate')return res.end(JSON.stringify({done:true}));
     let raw='';for await(const chunk of req)raw+=chunk;const body=JSON.parse(raw);
+    if(body.messages.some(m=>m.images))return res.end(JSON.stringify({message:{content:JSON.stringify({style:'Flat solid black shapes with clean edges and white negative space.'})},done_reason:'stop'}));
     const input=JSON.parse(body.messages[1].content);
     if(blockModel){blockModel=false;modelStarted();await new Promise(resolve=>{releaseModel=resolve;});}
     const index=input.route.includes('close-up')?0:input.route.includes('complete subject')?1:2;
@@ -29,14 +31,32 @@ test('HTTP planning reports exact field failures; resume keeps IDs and only call
     res.end(JSON.stringify({message:{content:JSON.stringify(spec)},done_reason:'stop',eval_count:200}));
   });
   fake.listen(0,'127.0.0.1');await once(fake,'listening');
-  const child=spawn(process.execPath,['server.js'],{cwd:process.cwd(),env:{...process.env,PORT:'0',OLLAMA_URL:`http://127.0.0.1:${fake.address().port}`,OLLAMA_PLANNER:'qwen3.8:latest',LOG_DIR:directory},stdio:['ignore','pipe','pipe']});
+  const child=spawn(process.execPath,['server.ts'],{cwd:process.cwd(),env:{...process.env,MODEL_PROVIDER:'ollama',BILLING_REQUIRED:'false',ACCOUNTS_DB:join(directory,'accounts.sqlite'),PORT:'0',OLLAMA_URL:`http://127.0.0.1:${fake.address().port}`,OLLAMA_PLANNER:'qwen3-vl:8b',MFLUX_MODEL_PATH:join(directory,'missing-checkpoint'),LOG_DIR:directory},stdio:['ignore','pipe','pipe']});
   t.after(async()=>{child.kill('SIGTERM');if(child.exitCode===null)await once(child,'exit');fake.closeAllConnections();await new Promise(resolve=>fake.close(resolve));await rm(directory,{recursive:true,force:true});});
   let output='';const appUrl=await new Promise((resolve,reject)=>{
     child.stdout.on('data',chunk=>{output+=chunk;const match=output.match(/http:\/\/127\.0\.0\.1:\d+/);if(match)resolve(match[0]);});
     child.once('error',reject);child.once('exit',code=>reject(new Error(`Server exited ${code}`)));
   });
-  const input={description:'Nova AI editor',style:'angular'};
+  const input={description:'Nova AI editor',style:'angular',referenceId:'notion',referenceFile:'notion.svg'};
   const post=body=>fetch(appUrl+'/api/territories',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+  for(const route of ['/api/territories','/api/generate']){
+    for(const [referenceId,code] of [[undefined,'REFERENCE_REQUIRED'],['does-not-exist','INVALID_REFERENCE']]){
+      const response=await fetch(appUrl+route,{method:'POST',body:JSON.stringify({description:'Nova',prompt:'A logo',referenceId})});
+      assert.equal(response.status,400);assert.equal((await response.json()).code,code);
+    }
+  }
+  const invalidVariant=await post({...input,referenceFile:'other.svg'});assert.equal(invalidVariant.status,400);assert.equal((await invalidVariant.json()).code,'INVALID_REFERENCE');
+  const unavailable = await post({...input, referenceId:'notion'});
+  assert.equal(unavailable.status,503);
+  const missingEditor = await unavailable.json();
+  assert.equal(missingEditor.code,'EDITOR_UNAVAILABLE');
+  assert.ok(missingEditor.requestId);
+  assert.equal(calls.length,0,'missing editor must fail before model inference');
+  const modelPath=join(directory,'missing-checkpoint');
+  await mkdir(join(modelPath,'tokenizer'),{recursive:true});
+  await writeFile(join(modelPath,'.reference-verified'),JSON.stringify({passed:true}));
+  await writeFile(join(modelPath,'tokenizer/tokenizer.json'),'{}');
+  for(const part of ['vae','text_encoder','transformer']){await mkdir(join(modelPath,part),{recursive:true});await writeFile(join(modelPath,part,'model.safetensors.index.json'),JSON.stringify({weight_map:{t:'test.safetensors'}}));await writeFile(join(modelPath,part,'test.safetensors'),'');}
   const response=await post(input),partial=await response.json();
   assert.equal(response.status,200);assert.equal(partial.status,'partial');assert.equal(partial.requestId,response.headers.get('x-request-id'));
   assert.equal(partial.failures[0].name,'完整剪影');assert.equal(partial.failures[0].field,'palette');assert.equal(partial.failures[0].code,'INVALID_FIELD');

@@ -1,4 +1,4 @@
-"""Build an isolated MFLUX checkpoint from local Ollama encoder/VAE tensors.
+"""Build an isolated MFLUX checkpoint from local Ollama FLUX tensors.
 Never modifies Ollama blobs or the existing downloaded checkpoint.
 """
 import json
@@ -15,13 +15,14 @@ manifest = json.loads((ollama / 'manifests/registry.ollama.ai/x/flux2-klein/late
 source = root / 'models/flux2-klein-4b'
 target = root / 'models/flux2-klein-local'
 target.mkdir(exist_ok=True)
-for component in ['tokenizer', 'transformer']:
+(target / '.reference-verified').unlink(missing_ok=True)
+for component in ['tokenizer']:
     dest = target / component
     dest.mkdir(exist_ok=True)
     for file in (source / component).iterdir():
         if file.is_file() and not (dest / file.name).exists():
             os.link(file, dest / file.name)
-for component in ['text_encoder', 'vae']:
+for component in ['text_encoder', 'vae', 'transformer']:
     raw = {}
     for layer in manifest['layers']:
         name = layer.get('name', '')
@@ -31,6 +32,12 @@ for component in ['text_encoder', 'vae']:
         key = name[len(component) + 1:]
         if component == 'text_encoder':
             key = key.removeprefix('model.').replace('.weight_scale', '.scales').replace('.weight_qbias', '.biases')
+        if component == 'transformer':
+            # Names follow Flux2WeightMapping.get_transformer_mapping(); these
+            # mappings only rename tensors, including their quantization data.
+            key = key.replace('.weight_scale', '.scales').replace('.weight_qbias', '.biases')
+            key = key.replace('time_guidance_embed.timestep_embedder.', 'time_guidance_embed.')
+            key = key.replace('.attn.to_out.0.', '.attn.to_out.')
         raw[key] = tensor
     if component == 'text_encoder':
         config_layer = next(l for l in manifest['layers'] if l.get('name') == 'text_encoder/config.json')
@@ -40,9 +47,28 @@ for component in ['text_encoder', 'vae']:
     if component == 'vae':
         raw = dict(tree_flatten(WeightMapper.apply_mapping(raw, Flux2WeightMapping.get_vae_mapping())))
     expected = set(json.loads((source / component / 'model.safetensors.index.json').read_text())['weight_map'])
-    # Ollama stores embeddings unquantized; preserve their original precision.
-    allowed_missing = {key for key in expected if key.endswith(('.scales', '.biases')) and key.rsplit('.', 1)[0] + '.weight' in raw and raw[key.rsplit('.', 1)[0] + '.weight'].dtype != mx.uint32}
-    missing = expected - set(raw) - allowed_missing
+    # MFLUX creates quantized modules for every projection listed in its index.
+    # Convert Ollama's float exceptions to the same 4-bit/group-64 representation.
+    for key in sorted(expected):
+        if not key.endswith('.scales'):
+            continue
+        prefix = key.removesuffix('.scales')
+        weight = raw.get(prefix + '.weight')
+        if weight is not None and weight.dtype == mx.uint32 and key in raw:
+            # This Ollama 4-bit checkpoint uses group-32; MFLUX uses group-64.
+            group_size = weight.shape[-1] * 8 // raw[key].shape[-1]
+            if group_size not in (32, 64):
+                raise RuntimeError(f'Unsupported quantization group for {component}/{prefix}: {group_size}')
+            if group_size == 64:
+                continue
+            weight = mx.dequantize(weight, raw[key], raw[prefix + '.biases'], group_size=group_size, bits=4)
+        if weight is not None and weight.dtype != mx.uint32:
+            quantized, scales, biases = mx.quantize(weight, group_size=64, bits=4)
+            mx.eval(quantized, scales, biases)
+            raw[prefix + '.weight'] = quantized
+            raw[prefix + '.scales'] = scales
+            raw[prefix + '.biases'] = biases
+    missing = expected - set(raw)
     extra = set(raw) - expected
     if missing or extra:
         raise RuntimeError(f'{component}: missing={sorted(missing)}, extra={sorted(extra)}')

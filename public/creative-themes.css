@@ -1,0 +1,154 @@
+.scene-art,.scene-art>svg{display:none}
+.theme-categories{display:flex;gap:7px;margin:0 0 16px;flex-wrap:wrap}
+.theme-categories button{border:1px solid var(--line);background:var(--paper);color:var(--ink);font-size:11px;padding:7px 12px;border-radius:30px}
+.theme-categories button[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.theme-choices button[hidden]{display:none}.theme-panel{max-height:min(720px,80vh)}
+.sample-arcade{background:#fdc928;color:#2347db}.sample-arcade b{font-family:monospace;text-shadow:2px 2px #fff}.sample-arcade em{background:#bdeac9;border:5px solid #2347db}
+.sample-editorial{background:#f6f1e7;color:#d9402e}.sample-editorial b{font-weight:400;font-style:italic;font-size:38px}.sample-editorial em{background:#d9402e;border-radius:0}
+.sample-orbital{background:#0b1120;color:#d4fb9d}.sample-orbital em{width:42px;height:42px;bottom:-5px;border-radius:50%;background:radial-gradient(at 20% 20%,#e8f2ff,#263853)}
+.sample-bauhaus{background:#e9c842;color:#22231f}.sample-bauhaus em{border-radius:0 50% 50% 0;background:#d63e26;border:0}.sample-bauhaus b{font-family:Helvetica,sans-serif;font-weight:900}
+.sample-collage{background:#eec4b0;color:#2b4bb6}.sample-collage em{border-radius:0;background:#edda49;transform:rotate(-13deg);box-shadow:3px 3px #2b4bb6}.sample-collage b{transform:rotate(6deg)}
+.sample-cinema{background:#171313;color:#d4b28b}.sample-cinema b{font-weight:400;letter-spacing:3px}.sample-cinema em{border:1px solid #d4b28b;border-radius:50%;background:none}
+/* Shared legible controls for six new worlds. */
+html:is([data-theme=arcade],[data-theme=editorial],[data-theme=orbital],[data-theme=bauhaus],[data-theme=collage],[data-theme=cinema]) .studio{position:relative;display:grid;grid-template-columns:1.2fr 1fr;gap:20px 5%;align-items:center;isolation:isolate}
+html:is([data-theme=arcade],[data-theme=editorial],[data-theme=orbital],[data-theme=bauhaus],[data-theme=collage],[data-theme=cinema]) .scene-art{display:block;grid-column:2;grid-row:1;min-width:0}
+.scene-art svg{width:100%;height:auto}
+[data-theme=arcade] .scene-arcade,[data-theme=editorial] .scene-editorial,[data-theme=orbital] .scene-orbital,[data-theme=bauhaus] .scene-bauhaus,[data-theme=collage] .scene-collage,[data-theme=cinema] .scene-cinema{display:block}
+html:is([data-theme=arcade],[data-theme=editorial],[data-theme=orbital],[data-theme=bauhaus],[data-theme=collage],[data-theme=cinema]) .hero{grid-column:1;grid-row:1;position:relative;z-index:1}
+html:is([data-theme=arcade],[data-theme=editorial],[data-theme=orbital],[data-theme=bauhaus],[data-theme=collage],[data-theme=cinema]) .workflow{grid-column:1/-1;display:flex;gap:25px;margin:14px 0 0;padding:20px 0;border-top:1px solid var(--line)}
+html:is([data-theme=arcade],[data-theme=editorial],[data-theme=orbital],[data-theme=bauhaus],[data-theme=collage],[data-theme=cinema]) .workflow:before{display:none}
+html:is([data-theme=arcade],[data-theme=editorial],[data-theme=orbital],[data-theme=bauhaus],[data-theme=collage],[data-theme=cinema]) .workflow li{flex:1;min-width:0;gap:12px;border:0;padding:0}
+html:is([data-theme=arcade],[data-theme=editorial],[data-theme=orbital],[data-theme=bauhaus],[data-theme=collage],[data-theme=cinema]) .workflow li>span{background:var(--white);border:1px solid var(--line);color:var(--ink)}
+html:is([data-theme=arcade],[data-theme=editorial],[data-theme=orbital],[data-theme=bauhaus],[data-theme=collage],[data-theme=cinema]) .workflow .current>span{background:var(--accent);color:var(--paper);border-color:var(--accent)}
+html:is([data-theme=arcade],[data-theme=editorial],[data-theme=orbital],[data-theme=bauhaus],[data-theme=collage],[data-theme=cinema]) :is(.intro,.workflow small){color:var(--muted)}
+html:is([data-theme=arcade],[data-theme=editorial],[data-theme=orbital],[data-theme=bauhaus],[data-theme=collage],[data-theme=cinema]) :is(.quick-brief,textarea,.variant-dialog,.reference-selection){background:var(--white);color:var(--ink);border-color:var(--line)}
+html:is([data-theme=arcade],[data-theme=editorial],[data-theme=orbital],[data-theme=bauhaus],[data-theme=collage],[data-theme=cinema]) .style-options input:checked+.style-card{background:var(--soft);color:var(--soft-ink);border-color:var(--accent)}
+html:is([data-theme=arcade],[data-theme=editorial],[data-theme=orbital],[data-theme=bauhaus],[data-theme=collage],[data-theme=cinema]) .logo-tile[aria-pressed=true]{background:var(--soft);outline:2px solid var(--accent)}
+html:is([data-theme=arcade],[data-theme=editorial],[data-theme=orbital],[data-theme=bauhaus],[data-theme=collage],[data-theme=cinema]) .hero-start{background:var(--accent);color:var(--paper)}
+/* Pocket Arcade: a handheld console, pressed buttons, and collectible tiles. */
+html[data-theme=arcade]{--paper:#fdc928;--white:#fff8d9;--ink:#172346;--muted:#48516a;--line:#9c853b;--accent:#2448d8;--soft:#dbe4ff;--soft-ink:#172346}
+[data-theme=arcade] .masthead{background:#fdc928;border-bottom:2px solid #172346}
+[data-theme=arcade] .studio{padding:45px 20px 15px}
+[data-theme=arcade] .hero h1{font-family:'Arial Rounded MT Bold','Avenir Next',sans-serif;font-weight:900;font-size:clamp(42px,5vw,72px);line-height:1.08;letter-spacing:-.055em;text-shadow:3px 3px #fff4bd}
+[data-theme=arcade] .hero-start{border:2px solid #172346;box-shadow:0 5px #172346;border-radius:12px;padding:15px 22px}
+[data-theme=arcade] .hero-start:active{transform:translateY(4px);box-shadow:0 1px #172346}
+[data-theme=arcade] .workflow b{font-family:var(--mono);font-size:12px}
+[data-theme=arcade] .logo-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:18px}
+[data-theme=arcade] .logo-tile{background:#fff8d9;border:2px solid #172346;border-radius:18px;box-shadow:0 5px #172346;min-height:173px}
+[data-theme=arcade] .logo-tile:hover{transform:translateY(-4px);background:#fffef0;box-shadow:0 9px #172346}
+[data-theme=arcade] .gallery-heading h2{font-weight:800;font-size:27px}
+[data-theme=arcade] .credit-pack{border:2px solid #172346;box-shadow:0 6px #172346;border-radius:18px}
+[data-theme=arcade] .credit-pack.featured{background:#dbe4ff}
+[data-theme=arcade] .quick-brief{border:2px solid #172346;border-radius:18px;box-shadow:6px 6px #172346}
+/* Independent Press: a vermilion cover, oversized serif, and index-like gallery. */
+html[data-theme=editorial]{--paper:#f6f1e7;--white:#fffcf6;--ink:#26211d;--muted:#77685d;--line:#c6baaa;--accent:#cc3929;--soft:#f6dfd5;--soft-ink:#74271f;--serif:Georgia,'Songti SC',serif}
+[data-theme=editorial] .masthead{background:var(--paper);border-bottom:3px double var(--ink)}
+[data-theme=editorial] .studio{padding:52px 0 16px}
+[data-theme=editorial] .hero h1{font:400 clamp(48px,5.9vw,83px)/1.05 var(--serif);letter-spacing:-.06em}
+[data-theme=editorial] .hero h1 .serif-word{font-style:italic;font-weight:400;color:var(--accent)}
+[data-theme=editorial] .hero-start{border-radius:0;background:none!important;color:var(--accent)!important;border-bottom:1px solid var(--accent);padding:10px 0}
+[data-theme=editorial] .workflow li>span{border:0!important;background:none!important;font:italic 26px var(--serif);color:var(--accent)!important}
+[data-theme=editorial] .gallery-heading h2,[data-theme=editorial] .pricing-heading h2{font-family:var(--serif);font-weight:400}
+[data-theme=editorial] .logo-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border-top:1px solid var(--ink)}
+[data-theme=editorial] .logo-tile{border-radius:0;background:none;border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);box-shadow:none;min-height:205px}
+[data-theme=editorial] .logo-tile:hover{background:#eee3d1;transform:none}
+[data-theme=editorial] .logo-tile strong{font-family:var(--serif);font-size:16px}
+[data-theme=editorial] :is(.credit-pack,.quick-brief,.primary,.search-wrap,.filter-select select){border-radius:0}
+[data-theme=editorial] .credit-pack{border:0;border-top:3px solid var(--ink);background:none}
+[data-theme=editorial] .credit-pack.featured{border-color:var(--accent);background:#eee3d1}
+[data-theme=editorial] .pack-price strong{font-family:var(--serif)}
+/* Orbit Control: a silver planet, instrument panels, and a quiet starfield. */
+html[data-theme=orbital]{color-scheme:dark;--paper:#0b1120;--white:#141e30;--ink:#e8f0ff;--muted:#9eadc2;--line:#354359;--accent:#d4fb9d;--soft:#293b38;--soft-ink:#d4fb9d}
+[data-theme=orbital] body{background:radial-gradient(circle at 20% 10%,#719aca0e 0 1px,transparent 2px) 0 0/29px 31px,var(--paper)}
+[data-theme=orbital] .masthead{background:#0b1120ee;border-bottom:1px solid var(--line)}
+[data-theme=orbital] .studio{padding:45px 20px 15px}
+[data-theme=orbital] .hero h1{font-size:clamp(45px,5.1vw,73px);font-weight:400;letter-spacing:-.065em;line-height:1.09}
+[data-theme=orbital] .hero-pill{border:1px solid var(--line);padding:8px 12px;border-radius:100px;color:var(--accent)}
+[data-theme=orbital] .hero-start{border-radius:100px}
+[data-theme=orbital] .workflow{border-bottom:1px solid var(--line);padding:23px 0!important}
+[data-theme=orbital] .logo-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
+[data-theme=orbital] .logo-tile{background:#141e30;border:1px solid #354359;border-radius:14px;box-shadow:inset 0 1px #ffffff0a;min-height:180px}
+[data-theme=orbital] .logo-tile img{background:#eaf0f7;border-radius:8px;padding:15px;height:80px;width:100%;margin:0 0 18px}
+[data-theme=orbital] .logo-tile:hover{background:#1d2d42;transform:translateY(-3px);border-color:var(--accent)}
+[data-theme=orbital] .gallery-heading h2{font-size:26px;font-weight:400}
+[data-theme=orbital] .credit-pack.featured{background:#263733}
+[data-theme=orbital] .primary{background:var(--accent);color:var(--paper)}
+/* Bauhaus Blocks: a geometric study and a hard modular grid. */
+html[data-theme=bauhaus]{--paper:#f0ede3;--white:#faf8f1;--ink:#22231f;--muted:#67665c;--line:#96968a;--accent:#c43525;--soft:#edd8c8;--soft-ink:#7d251b}
+[data-theme=bauhaus] .masthead{background:var(--paper);border-bottom:3px solid #22231f}
+[data-theme=bauhaus] .studio{padding:40px 0 0;gap:0!important}
+[data-theme=bauhaus] .hero h1{font-size:clamp(48px,5.3vw,77px);font-weight:900;line-height:1.01;letter-spacing:-.06em}
+[data-theme=bauhaus] .hero-start{border-radius:0!important;background:#244aaa!important;border:0}
+[data-theme=bauhaus] .workflow{margin-top:28px!important;padding:0!important;gap:0!important;border-top:3px solid #22231f!important;border-bottom:3px solid #22231f}
+[data-theme=bauhaus] .workflow li{padding:25px 18px!important;border-right:1px solid #22231f!important}
+[data-theme=bauhaus] .workflow li:last-child{border-right:0!important}
+[data-theme=bauhaus] .workflow li>span{border-radius:0;background:#e7c644!important;color:#22231f!important;font-size:18px}
+[data-theme=bauhaus] .logo-grid{gap:0;grid-template-columns:repeat(6,minmax(0,1fr));border:2px solid #22231f}
+[data-theme=bauhaus] .logo-tile{border-radius:0;border:0;border-right:1px solid #96968a;border-bottom:1px solid #96968a;box-shadow:none;background:var(--white);min-height:175px}
+[data-theme=bauhaus] .logo-tile:nth-child(6n+1){border-top:7px solid #244aaa}[data-theme=bauhaus] .logo-tile:nth-child(6n+2){border-top:7px solid #d63e26}[data-theme=bauhaus] .logo-tile:nth-child(6n+3){border-top:7px solid #e7c644}
+[data-theme=bauhaus] .logo-tile:hover{transform:none;background:#e7c644}
+[data-theme=bauhaus] :is(.credit-pack,.quick-brief,.primary,.search-wrap,.filter-select select){border-radius:0;box-shadow:none}
+[data-theme=bauhaus] .credit-pack{border:2px solid #22231f}
+[data-theme=bauhaus] .credit-pack:nth-child(1){border-top:12px solid #244aaa}[data-theme=bauhaus] .credit-pack:nth-child(2){border-top:12px solid #d63e26;background:#e7c644}[data-theme=bauhaus] .credit-pack:nth-child(3){border-top:12px solid #e7c644}
+/* Paper Playground: taped cutouts, rough edges, and scattered printed cards. */
+html[data-theme=collage]{--paper:#f1e9da;--white:#fffcf4;--ink:#29396b;--muted:#6e6d7c;--line:#bdafa0;--accent:#2b4bb6;--soft:#e0e7ff;--soft-ink:#253c92}
+[data-theme=collage] body{background-image:radial-gradient(#9a816729 .6px,transparent .6px);background-size:5px 5px}
+[data-theme=collage] .masthead{background:#f1e9da;border-bottom:1px dashed #bdafa0}
+[data-theme=collage] .studio{padding:40px 18px 16px}
+[data-theme=collage] .hero h1{font-family:Georgia,'Songti SC',serif;font-weight:700;font-style:italic;font-size:clamp(44px,5.2vw,70px);line-height:1.1;letter-spacing:-.055em}
+[data-theme=collage] .serif-word{background:#edda49;box-shadow:5px 2px #edda49,-5px -2px #edda49}
+[data-theme=collage] .hero-start{border-radius:0;transform:rotate(-2deg);box-shadow:4px 4px #eeb494}
+[data-theme=collage] .workflow{border-top:1px dashed #bdafa0!important}
+[data-theme=collage] .workflow li>span{transform:rotate(-6deg);border-radius:5px;background:#edda49!important;color:var(--ink)!important;border:0!important}
+[data-theme=collage] .logo-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:27px 22px;padding:15px 6px}
+[data-theme=collage] .logo-tile{background:#fffcf4;border:0;border-radius:1px;box-shadow:2px 5px 8px #49392c1a;min-height:182px;transform:rotate(-2deg)}
+[data-theme=collage] .logo-tile:nth-child(3n){transform:rotate(2deg)}[data-theme=collage] .logo-tile:nth-child(4n){background:#faedcf}
+[data-theme=collage] .logo-tile:before{content:'';width:42px;height:17px;position:absolute;top:-7px;left:calc(50% - 21px);background:#d9c89588;transform:rotate(6deg)}
+[data-theme=collage] .logo-tile:hover{transform:rotate(0) translateY(-4px);background:#fffaf0}
+[data-theme=collage] .gallery-heading h2,[data-theme=collage] .pricing-heading h2{font-family:Georgia,'Songti SC',serif;font-weight:400;font-style:italic}
+[data-theme=collage] .credit-pack{border:1px solid #bdafa0;border-radius:1px;box-shadow:5px 6px #d7cbbb}
+[data-theme=collage] .credit-pack.featured{background:#f5ddb8;transform:rotate(-1deg)}
+[data-theme=collage] .quick-brief{border:1px solid #bdafa0;box-shadow:7px 7px #d7cbbb;border-radius:1px}
+/* Midnight Cinema: a widescreen composition with quiet gold geometry. */
+html[data-theme=cinema]{color-scheme:dark;--paper:#171313;--white:#221d1c;--ink:#f4e8d8;--muted:#baa894;--line:#554339;--accent:#d4b28b;--soft:#3c2e23;--soft-ink:#f4d2a7;--serif:Georgia,'Songti SC',serif}
+[data-theme=cinema] .masthead{background:#171313;border-bottom:1px solid #554339}
+[data-theme=cinema] .studio{padding:40px 42px 16px;margin-top:25px;border:1px solid #554339;background:linear-gradient(135deg,#2e201b,#171313 70%)}
+[data-theme=cinema] .hero h1{font-family:var(--serif);font-size:clamp(45px,5vw,70px);font-weight:400;letter-spacing:-.05em;line-height:1.13}
+[data-theme=cinema] .hero .eyebrow{letter-spacing:.18em;color:var(--accent)}
+[data-theme=cinema] .hero-start{background:none!important;color:#e6c299!important;border:1px solid #d4b28b;border-radius:0;padding:14px 23px}
+[data-theme=cinema] .workflow li>span{border-radius:0;background:none!important;color:var(--accent)!important;font-family:var(--serif);font-size:24px;border:0!important}
+[data-theme=cinema] .logo-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:20px}
+[data-theme=cinema] .logo-tile{background:#221d1c;border:1px solid #554339;border-radius:1px;box-shadow:none;padding:14px;min-height:219px}
+[data-theme=cinema] .logo-tile img{background:#efe9df;width:100%;height:125px;padding:32px;margin:0 0 19px}
+[data-theme=cinema] .logo-tile strong{font-family:var(--serif);font-size:15px;font-weight:400;letter-spacing:.025em}
+[data-theme=cinema] .logo-tile:hover{background:#32251f;border-color:#d4b28b;transform:translateY(-3px)}
+[data-theme=cinema] .gallery-heading h2,[data-theme=cinema] .pricing-heading h2{font-family:var(--serif);font-weight:400}
+[data-theme=cinema] .credit-pack{border-radius:1px;border-color:#554339;background:none}
+[data-theme=cinema] .credit-pack.featured{background:#32251f;border-color:#d4b28b}
+[data-theme=cinema] .pack-price strong{font-family:var(--serif)}
+[data-theme=cinema] .primary{background:var(--accent);color:var(--paper)}
+/* Preferences, selected purchases, and saved studio decisions. */
+.credit-pack[data-chosen=true]{outline:3px solid var(--accent);outline-offset:4px}.credit-pack[data-chosen=true] .pack-heading:after{content:'✓';color:var(--accent);font-size:20px}
+.provider-button[aria-pressed=true]{outline:2px solid var(--accent);outline-offset:2px}
+.concept-card[data-selected=true]{outline:3px solid var(--accent);outline-offset:3px}
+.concept-card[hidden]{display:none!important}.saved-board-actions{display:flex;gap:18px;align-items:center;margin:0 0 20px}.saved-board-actions button{color:var(--ink)}
+.preferences-status{font-size:11px;line-height:1.6;color:var(--muted)}
+@media(max-width:1100px){
+  html:is([data-theme=arcade],[data-theme=orbital],[data-theme=collage]) .logo-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  [data-theme=bauhaus] .logo-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media(max-width:760px){
+  .theme-panel{top:116px;max-height:calc(100dvh - 136px)}
+  html:is([data-theme=arcade],[data-theme=editorial],[data-theme=orbital],[data-theme=bauhaus],[data-theme=collage],[data-theme=cinema]) .studio{grid-template-columns:1fr;padding:26px 0 0;gap:18px!important}
+  html:is([data-theme=arcade],[data-theme=editorial],[data-theme=orbital],[data-theme=bauhaus],[data-theme=collage],[data-theme=cinema]) .scene-art{grid-column:1;grid-row:2;width:min(100%,370px);justify-self:center}
+  html:is([data-theme=arcade],[data-theme=editorial],[data-theme=orbital],[data-theme=bauhaus],[data-theme=collage],[data-theme=cinema]) .workflow{grid-row:3;gap:14px!important;margin:0!important;padding:18px 0!important}
+  html:is([data-theme=arcade],[data-theme=editorial],[data-theme=orbital],[data-theme=bauhaus],[data-theme=collage],[data-theme=cinema]) .workflow li{padding:0!important;display:block}
+  html:is([data-theme=arcade],[data-theme=editorial],[data-theme=orbital],[data-theme=bauhaus],[data-theme=collage],[data-theme=cinema]) .hero h1{font-size:39px;line-height:1.12}
+  html:is([data-theme=arcade],[data-theme=editorial],[data-theme=orbital],[data-theme=bauhaus],[data-theme=collage],[data-theme=cinema]) .logo-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  [data-theme=editorial] .logo-tile{min-height:175px}[data-theme=editorial] .logo-grid,[data-theme=bauhaus] .logo-grid{gap:0}
+  [data-theme=collage] .logo-grid{gap:24px 14px;padding:12px 4px}[data-theme=collage] .logo-tile{min-height:160px}
+  [data-theme=cinema] .studio{padding:25px 17px 0!important}[data-theme=cinema] .logo-tile{min-height:182px;padding:9px}[data-theme=cinema] .logo-tile img{height:92px;padding:20px}
+  [data-theme=arcade] .hero h1{font-size:40px}[data-theme=arcade] .logo-tile{min-height:160px}
+  [data-theme=orbital] .logo-tile{min-height:165px;padding:12px}[data-theme=orbital] .logo-tile img{height:67px}
+  .theme-panel-heading{gap:10px}.theme-panel-heading>span{font-size:10px}
+}

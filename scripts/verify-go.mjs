@@ -1,0 +1,18 @@
+import '../lib/load-env.ts';
+import assert from 'node:assert/strict';
+import {mkdir,writeFile} from 'node:fs/promises';
+import sharp from 'sharp';
+import {planDesign} from '../lib/design-plan.ts';
+import {describeReference,reviewImage} from '../lib/visual-review.ts';
+const dir='outputs/go-validation';await mkdir(dir,{recursive:true});
+const report={};
+report.style=await describeReference('data/svg-logos/logos/notion.svg','');
+assert.ok(report.style,'Reference vision unavailable');console.log('Reference understanding passed');
+const negative=`${dir}/avatar.png`;
+await sharp(Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"><rect width="512" height="512" fill="white"/><circle cx="256" cy="155" r="75"/><ellipse cx="256" cy="365" rx="145" ry="100"/></svg>')).png().toFile(negative);
+report.review=await reviewImage(negative,{subject:'parrot',recognitionCue:'A bird with a curved hooked beak',lettering:''},'');
+assert.equal(report.review.status,'reject');console.log('Human avatar correctly rejected as parrot');
+report.plan=await planDesign({description:'品牌名 Parrot，翻译工具。标志主体是一只鹦鹉，要有明确的弯钩喙和鸟类头部特征；不要人形、兔耳、文字或字母。',style:'organic'},null,'');
+await writeFile(`${dir}/report.json`,JSON.stringify(report,null,2));
+console.log('Planning',report.plan.status,report.plan.territories.length,JSON.stringify(report.plan.failures));
+assert.equal(report.plan.status,'complete');assert.equal(report.plan.territories.length,3);

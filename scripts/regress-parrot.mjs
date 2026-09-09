@@ -1,8 +1,8 @@
 // Explicit integration check: uses local models/GPU and writes generated test assets.
 import {readFile,writeFile} from 'node:fs/promises';
-import {reviewImage,describeReference} from '../lib/visual-review.js';
-import {compileExploration} from '../lib/design-plan.js';
-import {resolveReference,logoRoot} from '../lib/gallery.js';
+import {reviewImage,describeReference} from '../lib/visual-review.ts';
+import {compileExploration} from '../lib/design-plan.ts';
+import {resolveReference,logoRoot} from '../lib/gallery.ts';
 import {join} from 'node:path';
 const base='http://127.0.0.1:4173';
 const plan=JSON.parse(await readFile('outputs/reference-check/parrot-v2-plan.json','utf8'));

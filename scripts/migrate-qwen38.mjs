@@ -6,7 +6,7 @@ import {mkdir,writeFile,open} from 'node:fs/promises';
 import {dirname,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {setTimeout as delay} from 'node:timers/promises';
-import {DEFAULT_LOCAL_MODEL} from '../lib/local-model.js';
+const DEFAULT_LOCAL_MODEL='qwen3.8:latest';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 process.chdir(root);
@@ -17,7 +17,7 @@ const pid=Number(process.argv[2]);
 assert.ok(Number.isSafeInteger(pid) && pid>1,'Pass the verified existing logo server PID');
 const identity=()=>execFileSync('/bin/ps',['-p',String(pid),'-o','lstart=,command='],{encoding:'utf8'}).trim();
 const expectedIdentity=identity();
-assert.match(expectedIdentity,/\bnode server\.js$/);
+assert.match(expectedIdentity,/\bnode server\.ts$/);
 const cwd=execFileSync('/usr/sbin/lsof',['-a','-p',String(pid),'-d','cwd','-Fn'],{encoding:'utf8'});
 assert.ok(cwd.split('\n').includes(`n${root}`),'Server belongs to a different workspace');
 const reportDir=resolve(root,'outputs/reference-check');
@@ -86,7 +86,7 @@ try {
   }
   assert.ok(stopped,'Old server has not finished draining; refusing to launch a conflicting server');
   const log=await open(resolve(reportDir,`qwen38-server-${Date.now()}.log`),'a');
-  const server=spawn(process.execPath,['server.js'],{cwd:root,detached:true,stdio:['ignore',log.fd,log.fd],env:{...process.env,PORT:'4173',OLLAMA_URL:url,OLLAMA_PLANNER:DEFAULT_LOCAL_MODEL,OLLAMA_VISION:DEFAULT_LOCAL_MODEL}});
+  const server=spawn(process.execPath,['server.ts'],{cwd:root,detached:true,stdio:['ignore',log.fd,log.fd],env:{...process.env,PORT:'4173',OLLAMA_URL:url,OLLAMA_PLANNER:DEFAULT_LOCAL_MODEL,OLLAMA_VISION:DEFAULT_LOCAL_MODEL}});
   server.unref();await log.close();
   let ready=false;
   for(let attempt=0;attempt<20;attempt++) {
