@@ -14,6 +14,8 @@ import { fault } from "./accounts.ts";
 import { logoRoot, resolveReference } from "./gallery.ts";
 import { historyConcept } from "./design-history.ts";
 import { reviewImage } from "./visual-review.ts";
+import { imageProviderError } from "./image-provider-error.ts";
+import { logEvent } from "./runtime-log.ts";
 
 export const imageEndpoint = "fal-ai/flux-2/klein/4b/edit";
 export const explorationEndpoint = "fal-ai/flux-2/klein/4b";
@@ -113,11 +115,19 @@ export function createCloudGeneration({
         });
         await state.submitted(id, result.request_id);
         return { jobId: id, stage: "editing" };
-      } catch {
+      } catch (cause) {
         // An ambiguous network failure may have reached fal. Refund this reservation;
         // never automatically send a second paid upstream request.
-        await state.fail(id, "GENERATION_SUBMIT_FAILED");
-        throw fault("GENERATION_SUBMIT_FAILED", 502);
+        const failure = imageProviderError(cause);
+        await logEvent("error", "generation.submit.failed", {
+          provider: "fal",
+          endpoint,
+          jobId: id,
+          code: failure.code,
+          upstreamStatus: asError(cause).status,
+        });
+        await state.fail(id, failure.code);
+        throw fault(failure.code, failure.status);
       }
     },
     async poll(id: string, userId: string): Promise<GenerationEvent> {

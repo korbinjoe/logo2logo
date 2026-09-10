@@ -233,6 +233,17 @@ export function Studio() {
     } catch (e) {
       if (token === epoch.current)
         patch(key, { failure: error(e), status: undefined });
+      if (
+        e instanceof ApiError &&
+        [
+          "IMAGE_PROVIDER_BILLING_REQUIRED",
+          "IMAGE_PROVIDER_ACCESS_DENIED",
+          "IMAGE_PROVIDER_BUSY",
+        ].includes(e.data.code || "")
+      ) {
+        if (token === epoch.current) setMessage(error(e));
+        return false;
+      }
     } finally {
       void refresh().catch(() => {});
     }
@@ -331,7 +342,7 @@ export function Studio() {
         const id = c.id || String(index);
         if (!session.rendered.has(id)) {
           session.rendered.add(id);
-          await generate(c, token);
+          if ((await generate(c, token)) === false) return;
         }
       }
       if (token !== epoch.current) return;

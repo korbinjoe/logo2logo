@@ -583,3 +583,46 @@ test("admin credits require authorization and same-origin writes, audit changes,
   assert.deepEqual(concurrent.map((x) => x.status).sort(), [200, 409]);
   assert.equal((await store.user(user.id)).credits, 12);
 });
+
+test("fal top-up rejection has an actionable public code and refunds the reservation exactly once", async (t) => {
+  const { store } = await setup(t),
+    { user } = await funded(store),
+    state = createCloudState(store);
+  const upstream = Object.assign(new Error("Forbidden"), {
+    status: 403,
+    body: { detail: "User is locked. Reason: TOP_UP." },
+  });
+  let calls = 0;
+  const generation = createCloudGeneration({
+    state,
+    storage: { read: async () => Buffer.from(""), put: async () => {} },
+    provider: {
+      queue: {
+        submit: async () => {
+          calls++;
+          throw upstream;
+        },
+      },
+    },
+  });
+  await assert.rejects(
+    generation.submit(user.id, {
+      prompt: "A minimal N logo",
+      referenceId: "notion",
+      promptVersion: "exploration-v2",
+    }),
+    { code: "IMAGE_PROVIDER_BILLING_REQUIRED", status: 503 },
+  );
+  const [job] = await store.query(
+    "SELECT id FROM jobs WHERE user_id=?",
+    user.id,
+  );
+  assert.equal(
+    (await state.job(job.id, user.id)).error,
+    "IMAGE_PROVIDER_BILLING_REQUIRED",
+  );
+  assert.equal((await store.user(user.id)).credits, 18);
+  await state.fail(job.id, "IMAGE_PROVIDER_BILLING_REQUIRED");
+  assert.equal((await store.user(user.id)).credits, 18);
+  assert.equal(calls, 1);
+});

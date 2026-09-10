@@ -4,6 +4,8 @@
 
 每个账号首次 OAuth 登录后一次性赠送 3 次额度，旧账号在读取登录状态时自动补发一次。唯一流水 `welcome:<userId>` 与余额更新在同一数据库事务中提交，重复登录、并发请求不会重复赠送。手动把余额改为 0 后，也不会再次领到赠送额度。Google 与 GitHub 仍是独立账号。
 
+站内额度与 fal 服务余额独立：赠送额度不代表 fal 免费提供推理。若 fal 返回 `403 User is locked. Reason: TOP_UP.`，需站点管理员在当前 API Key 所属账号的 [fal 计费后台](https://fal.ai/dashboard/billing) 充值。接口会返回 `IMAGE_PROVIDER_BILLING_REQUIRED`，返还本站预扣额度并停止本批后续生成；不会引导用户购买站内额度来解决服务商余额问题。服务端 `generation.submit.failed` 日志记录关联 requestId、任务 ID、模型端点和上游状态码，不记录密钥、图片或原始请求内容。
+
 Vercel / 云端后台地址：`https://logo2logo.vercel.app/admin.html`。先在首页使用管理员账号登录，再打开后台；账户菜单也会显示入口。管理员由服务端 `ADMIN_USER_IDS` 环境变量中的账号 UUID（逗号分隔）确定，默认为空，无人有管理权限；不依赖用户名或客户端 localStorage。可在 Turso 的 `users` 表中查询 UUID，修改环境变量后重新部署。
 
 后台支持按用户名 / UUID 搜索、设置最终余额、查看最近 50 条流水。每次修改必须填写原因，账本记录操作人、差额、目标余额和时间。提交会核对当前余额，遇到生成扣费等并发变化时要求重新选择账号，避免覆盖新余额；网络重试通过操作 ID 去重。管理员可把余额设为 0–1,000,000 的整数。该后台通过云端 API 访问 Turso；本地验证请运行云端适配器 `npm run dev:cloud`。

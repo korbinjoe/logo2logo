@@ -44,6 +44,18 @@ export function errorMessage(data: ApiFailure, locale: Locale) {
       "Submission failed. Your credit was returned.",
       "提交失败，额度已返还。",
     ],
+    IMAGE_PROVIDER_BILLING_REQUIRED: [
+      "The image provider requires a top-up by the site administrator. Your Logo2logo credit was returned; buying site credits will not resolve this issue.",
+      "出图服务商 fal 要求站点管理员充值后才能生成。你的 Logo2logo 额度已返还，购买站内额度无法解决此问题。",
+    ],
+    IMAGE_PROVIDER_ACCESS_DENIED: [
+      "The image provider denied access. The site administrator needs to check its configuration. Your credit was returned.",
+      "出图服务商拒绝访问，需要站点管理员检查配置。你的额度已返还。",
+    ],
+    IMAGE_PROVIDER_BUSY: [
+      "The image provider is busy. Please try again later. Your credit was returned.",
+      "出图服务商暂时繁忙，请稍后再试。你的额度已返还。",
+    ],
     GENERATION_FAILED: [
       "Generation failed. Your credit was returned.",
       "生成失败，额度已返还。",
