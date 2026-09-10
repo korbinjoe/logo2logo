@@ -1,17 +1,22 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { execFileSync } from 'node:child_process';
+import test from "node:test";
+import assert from "node:assert/strict";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { execFileSync } from "node:child_process";
 
-test('bundled gallery resolves every indexed SVG without an external checkout or working directory', async t => {
-  const isolated = await mkdtemp(join(tmpdir(), 'forma-gallery-'));
+test("bundled gallery resolves every indexed SVG without an external checkout or working directory", async (t) => {
+  const isolated = await mkdtemp(join(tmpdir(), "forma-gallery-"));
   t.after(() => rm(isolated, { recursive: true, force: true }));
   const env = { ...process.env, HOME: isolated };
   delete env.LOGOS_DIR;
-  const moduleUrl = new URL('../lib/gallery.ts', import.meta.url).href;
-  const output = execFileSync(process.execPath, ['--input-type=module', '-e', `
+  const moduleUrl = new URL("../lib/gallery.ts", import.meta.url).href;
+  const output = execFileSync(
+    process.execPath,
+    [
+      "--input-type=module",
+      "-e",
+      `
     import assert from 'node:assert/strict';
     import { readFile, realpath } from 'node:fs/promises';
     import { join } from 'node:path';
@@ -30,6 +35,37 @@ test('bundled gallery resolves every indexed SVG without an external checkout or
     }
     assert.equal(await resolveReference('missing-brand', '../outside.svg'), null);
     console.log(entries.length);
-  `], { cwd: isolated, env, encoding: 'utf8' });
+  `,
+    ],
+    { cwd: isolated, env, encoding: "utf8" },
+  );
   assert.ok(Number(output.trim()) > 1000);
+});
+
+test("cold gallery requests share complete results under a low file-descriptor limit", () => {
+  const moduleUrl = new URL("../lib/gallery.ts", import.meta.url).href;
+  const code = `
+    import assert from 'node:assert/strict';
+    import {readFile} from 'node:fs/promises';
+    import {join} from 'node:path';
+    import {gallery,logoRoot} from ${JSON.stringify(moduleUrl)};
+    const [first,...others] = await Promise.all(Array.from({length:12},()=>gallery()));
+    for(const other of others) assert.equal(other,first);
+    const indexed = JSON.parse(await readFile(join(logoRoot,'logos.json'),'utf8'));
+    const loaded = new Map(first.map(brand=>[brand.id,new Set(brand.variants.map(v=>v.file))]));
+    for(const brand of indexed) for(const file of brand.files) assert.ok(loaded.get(brand.shortname)?.has(file),file);
+  `;
+  const env = { ...process.env };
+  delete env.LOGOS_DIR;
+  execFileSync(
+    "bash",
+    [
+      "-c",
+      'ulimit -n 128; exec "$1" --input-type=module --eval "$2"',
+      "gallery-test",
+      process.execPath,
+      code,
+    ],
+    { env, timeout: 15000 },
+  );
 });

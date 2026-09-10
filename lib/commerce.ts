@@ -137,34 +137,7 @@ export function createCommerce({
       throw fault("AUTH_FAILED", 502);
     return data as Record<string, unknown>;
   }
-  function social(value: string | undefined, hosts: string[]) {
-    try {
-      const u = new URL(value || "");
-      return u.protocol === "https:" &&
-        hosts.includes(u.hostname) &&
-        !u.username &&
-        !u.password
-        ? u.href
-        : null;
-    } catch {
-      return null;
-    }
-  }
-  const socials = {
-    github: social(
-      env.SOCIAL_GITHUB_URL || "https://github.com/korbinjoe/logo2logo",
-      ["github.com"],
-    ),
-    x: social(env.SOCIAL_X_URL || "https://x.com/korbinjoe", [
-      "x.com",
-      "twitter.com",
-    ]),
-    youtube: social(env.SOCIAL_YOUTUBE_URL, [
-      "youtube.com",
-      "www.youtube.com",
-      "youtu.be",
-    ]),
-  };
+  const socials = socialLinks(env);
   return {
     store,
     origin,
@@ -414,5 +387,36 @@ export function createCommerce({
       }
       return false;
     },
+  };
+}
+
+export function socialLinks(env: Env) {
+  function social(value: string | undefined, hosts: string[]) {
+    try {
+      const u = new URL(value || "");
+      return u.protocol === "https:" &&
+        hosts.includes(u.hostname) &&
+        !u.username &&
+        !u.password
+        ? u.href
+        : null;
+    } catch {
+      return null;
+    }
+  }
+  return {
+    github: social(
+      env.SOCIAL_GITHUB_URL || "https://github.com/korbinjoe/logo2logo",
+      ["github.com"],
+    ),
+    x: social(env.SOCIAL_X_URL || "https://x.com/korbinjoe", [
+      "x.com",
+      "twitter.com",
+    ]),
+    youtube: social(env.SOCIAL_YOUTUBE_URL, [
+      "youtube.com",
+      "www.youtube.com",
+      "youtu.be",
+    ]),
   };
 }

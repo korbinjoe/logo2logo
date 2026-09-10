@@ -11,7 +11,7 @@ import { asError } from "./errors.ts";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { createCommerce } from "./commerce.ts";
+import { createCommerce, plans, socialLinks } from "./commerce.ts";
 import { createRemoteAccounts } from "./remote-accounts.ts";
 import { createCloudState } from "./cloud-state.ts";
 import { createObjectStorage, storageReady } from "./object-storage.ts";
@@ -45,7 +45,7 @@ export interface CloudAppOptions {
   describe?: typeof describeReference;
   commerceOptions?: CommerceOptions;
 }
-export function createCloudApp({
+function createConfiguredCloudApp({
   env = process.env,
   store,
   storage,
@@ -135,28 +135,6 @@ export function createCloudApp({
               ? "Cloud image generation is configured."
               : "Configure FAL_KEY and R2 storage to enable cloud generation.",
           });
-        if (req.method === "GET" && route === "/api/logos") {
-          res.setHeader("cache-control", "public, max-age=300");
-          return json(res, 200, { logos: await gallery() });
-        }
-        if (req.method === "GET" && route.startsWith("/reference/")) {
-          const file = route.slice("/reference/".length);
-          if (
-            !(await gallery()).some((item) =>
-              item.variants.some((v) => v.file === file),
-            )
-          )
-            throw fault("NOT_FOUND", 404);
-          res.setHeader("cache-control", "public, max-age=86400");
-          res.setHeader("content-type", "image/svg+xml");
-          return res.end(await readFile(join(logoRoot, "logos", file)));
-        }
-        const brand = route.match(/^\/api\/brands\/([a-zA-Z0-9_-]+)$/);
-        if (req.method === "GET" && brand) {
-          const item = (await gallery()).find((item) => item.id === brand[1]);
-          if (!item) throw fault("NOT_FOUND", 404);
-          return json(res, 200, await websiteInfo(item));
-        }
         if (req.method === "POST" && route === "/api/territories") {
           const input = await readBody<DesignInput>(req);
           if (!input.referenceId) throw fault("REFERENCE_REQUIRED");
@@ -323,4 +301,100 @@ function json(res: ServerResponse, status: number, data: unknown) {
   res.statusCode = status;
   res.setHeader("content-type", "application/json; charset=utf-8");
   res.end(JSON.stringify(data));
+}
+
+async function publicGallery(req: IncomingMessage, res: ServerResponse) {
+  const route = new URL(req.url || "/", "https://internal.invalid").pathname;
+  if (req.method === "GET" && route === "/api/logos") {
+    res.setHeader("cache-control", "public, max-age=300");
+    json(res, 200, { logos: await gallery() });
+    return true;
+  }
+  if (req.method === "GET" && route.startsWith("/reference/")) {
+    const file = route.slice("/reference/".length);
+    if (
+      !(await gallery()).some((item) =>
+        item.variants.some((v) => v.file === file),
+      )
+    )
+      throw fault("NOT_FOUND", 404);
+    res.setHeader("cache-control", "public, max-age=86400");
+    res.setHeader("content-type", "image/svg+xml");
+    res.end(await readFile(join(logoRoot, "logos", file)));
+    return true;
+  }
+  const brand = route.match(/^\/api\/brands\/([a-zA-Z0-9_-]+)$/);
+  if (req.method === "GET" && brand) {
+    const item = (await gallery()).find((item) => item.id === brand[1]);
+    if (!item) throw fault("NOT_FOUND", 404);
+    json(res, 200, await websiteInfo(item));
+    return true;
+  }
+  return false;
+}
+
+export function createCloudApp(options: CloudAppOptions = {}) {
+  let app: ReturnType<typeof createConfiguredCloudApp> | undefined;
+  const env = options.env || process.env;
+  return async (req: IncomingMessage, res: ServerResponse) => {
+    res.setHeader("x-content-type-options", "nosniff");
+    res.setHeader("cache-control", "private, no-store");
+    try {
+      if (await publicGallery(req, res)) return;
+      const missing = [
+        "APP_URL",
+        "TURSO_DATABASE_URL",
+        "TURSO_AUTH_TOKEN",
+      ].filter((key) => !env[key]);
+      if (!options.store && missing.length) {
+        const route = new URL(req.url || "/", "https://internal.invalid")
+          .pathname;
+        if (req.method === "GET" && route === "/api/account") {
+          return json(res, 200, {
+            user: null,
+            designs: [],
+            localMode: false,
+            billingReady: false,
+            providers: [
+              { id: "google", enabled: false },
+              { id: "github", enabled: false },
+            ],
+            plans,
+            socials: socialLinks(env),
+            paymentEnvironment:
+              env.PADDLE_ENVIRONMENT === "production"
+                ? "production"
+                : "sandbox",
+          });
+        }
+        if (req.method === "GET" && route === "/api/health") {
+          return json(res, 200, {
+            connected: false,
+            installed: false,
+            plannerInstalled: false,
+            visionInstalled: false,
+            model: imageEndpoint,
+            database: "unconfigured",
+            storage: "unconfigured",
+            missing,
+          });
+        }
+        if (req.method === "GET" && route === "/api/editor-status") {
+          return json(res, 200, {
+            state: "unavailable",
+            detail: "Cloud generation is not configured yet.",
+          });
+        }
+        throw Object.assign(fault("CLOUD_CONFIG_REQUIRED", 503), { missing });
+      }
+      app ||= createConfiguredCloudApp(options);
+      return await app(req, res);
+    } catch (cause) {
+      const error = asError(cause);
+      return json(res, error.status || 500, {
+        error: error.code || "SERVICE_UNAVAILABLE",
+        code: error.code || "SERVICE_UNAVAILABLE",
+      });
+    }
+  };
 }

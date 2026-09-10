@@ -2,6 +2,8 @@
 
 项目支持同一仓库部署 React + TypeScript 前端与 Node.js + TypeScript API。无需迁移 Next.js，也无需在 Vercel 上启动 `server.ts`。
 
+生产站点：https://logo2logo.vercel.app 。Vercel 项目为 `korbinzhaos-projects/logo2logo`，已关联 GitHub 仓库。缺少云数据库配置时，公开品牌墙、参考 SVG、套餐介绍与社交链接仍可浏览；登录、购买、生成和私有历史保持关闭，不使用临时数据库或免额度模式。完整服务还需以下云资源。
+
 | 部分 | 云端实现 |
 | --- | --- |
 | 页面 | Vite 构建 `dist/`，Vercel 静态托管 |
@@ -81,9 +83,11 @@ OpenCode Go 只处理文字规划和图像理解，不提供这里的图片生�
 - Build Command：`npm run build`；Output Directory：`dist`。
 - Environment Variables：以上 Turso、R2、模型、APP_URL、OAuth 字段；支付和社交字段见 `.env.example`。
 
+`api/tsconfig.json` 为 Vercel 函数独立选择服务端类型配置，并显式固定类型定义目录，兼容 Vercel 在临时目录调用 TypeScript 7 的编译流程；`npm run build` 仍会执行完整的前后端严格类型检查。品牌图库的冷启动加载共享一个请求并限制文件读取并发，避免云函数文件句柄限制导致品牌缺失。
+
 仓库中的 `vercel.json` 已配置 API、品牌参考 SVG、私有图片路由和 300 秒函数时限。`.vercelignore` 排除本机模型、虚拟环境、日志、生成图片和 `.env`。**不要使用 `npm start` 作为 Vercel 构建命令，也不要给密钥加 `VITE_` 前缀。**
 
-正常提交到已关联的 Git 仓库后，Vercel 会构建部署。也可在完成 Vercel 登录与项目关联后执行 `vercel --prod`。当前改造没有替你创建云账号、云资源或上线部署。
+正常提交到已关联的 Git 仓库后，Vercel 会构建部署。也可在完成 Vercel 登录与项目关联后执行 `vercel --prod`。Vercel 项目已完成关联，Turso、R2、fal 和支付资源仍需分别配置。
 
 ## 5. 配置付款与回调
 

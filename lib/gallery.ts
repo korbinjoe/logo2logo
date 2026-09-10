@@ -1,3 +1,4 @@
+import { asError } from "./errors.ts";
 import type { Brand } from "./types.ts";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -6,9 +7,36 @@ import { fileURLToPath } from "node:url";
 export const logoRoot =
   process.env.LOGOS_DIR ||
   fileURLToPath(new URL("../data/svg-logos/", import.meta.url));
-let cache: Brand[] | undefined;
-export async function gallery() {
-  if (cache) return cache;
+let cache: Promise<Brand[]> | undefined;
+export function gallery(): Promise<Brand[]> {
+  cache ||= loadGallery().catch((error) => {
+    cache = undefined;
+    throw error;
+  });
+  return cache;
+}
+
+// Cold starts can overlap. Share one load and cap file reads below the function
+// descriptor limit instead of permanently caching a partial gallery after EMFILE.
+async function mapLimited<T, R>(
+  items: T[],
+  concurrency: number,
+  work: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+      while (next < items.length) {
+        const index = next++;
+        results[index] = await work(items[index]);
+      }
+    }),
+  );
+  return results;
+}
+
+async function loadGallery(): Promise<Brand[]> {
   const brands = JSON.parse(
     await readFile(join(logoRoot, "logos.json"), "utf8"),
   ) as { shortname: string; name: string; url: string; files: string[] }[];
@@ -27,59 +55,55 @@ export async function gallery() {
         url: "",
       });
   }
-  const entries = await Promise.all(
-    brands.map(async (b) => {
-      const variants = (
-        await Promise.all(
-          b.files.map(async (file) => {
-            if (!/^[\w.-]+\.svg$/.test(file)) return null;
-            try {
-              const svg = await readFile(join(logoRoot, "logos", file), "utf8");
-              const colors = [
-                ...new Set(
-                  (svg.match(/#[0-9a-f]{3,8}\b/gi) || []).map((c) =>
-                    c.toLowerCase(),
-                  ),
-                ),
-              ];
-              const gradient = /<(?:linear|radial)Gradient\b/.test(svg);
-              const viewBox = svg
-                .match(/viewBox="([^"]+)"/)?.[1]
-                ?.split(/[ ,]+/)
-                .map(Number);
-              const wide = viewBox && viewBox[2] / viewBox[3] > 2;
-              const tags = [
-                gradient ? "渐变" : colors.length > 1 ? "多色" : "单色",
-                wide ? "横向标志" : "紧凑图形",
-              ];
-              return {
-                file,
-                tags,
-                colors: colors.slice(0, 6),
-                features: `SVG-derived features: ${gradient ? "gradient color" : colors.length > 1 ? "multiple flat colors" : "monochrome"}, ${wide ? "wide horizontal composition" : "compact composition"}. These are structural attributes, not a full visual analysis.`,
-              };
-            } catch {
-              return null;
-            }
-          }),
-        )
-      ).filter((entry): entry is NonNullable<typeof entry> => entry !== null);
-      if (!variants.length) return null;
-      const primary =
-        variants.find((v) => v.file.endsWith("-icon.svg")) || variants[0];
-      return {
-        id: b.shortname,
-        name: b.name,
-        url: b.url,
-        ...primary,
-        variants,
-      };
-    }),
-  );
-  cache = entries.filter(
+  const entries = await mapLimited(brands, 8, async (b) => {
+    const variants = (
+      await mapLimited(b.files, 4, async (file) => {
+        if (!/^[\w.-]+\.svg$/.test(file)) return null;
+        try {
+          const svg = await readFile(join(logoRoot, "logos", file), "utf8");
+          const colors = [
+            ...new Set(
+              (svg.match(/#[0-9a-f]{3,8}\b/gi) || []).map((c) =>
+                c.toLowerCase(),
+              ),
+            ),
+          ];
+          const gradient = /<(?:linear|radial)Gradient\b/.test(svg);
+          const viewBox = svg
+            .match(/viewBox="([^"]+)"/)?.[1]
+            ?.split(/[ ,]+/)
+            .map(Number);
+          const wide = viewBox && viewBox[2] / viewBox[3] > 2;
+          const tags = [
+            gradient ? "渐变" : colors.length > 1 ? "多色" : "单色",
+            wide ? "横向标志" : "紧凑图形",
+          ];
+          return {
+            file,
+            tags,
+            colors: colors.slice(0, 6),
+            features: `SVG-derived features: ${gradient ? "gradient color" : colors.length > 1 ? "multiple flat colors" : "monochrome"}, ${wide ? "wide horizontal composition" : "compact composition"}. These are structural attributes, not a full visual analysis.`,
+          };
+        } catch (error) {
+          if (asError(error).code !== "ENOENT") throw error;
+          return null;
+        }
+      })
+    ).filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+    if (!variants.length) return null;
+    const primary =
+      variants.find((v) => v.file.endsWith("-icon.svg")) || variants[0];
+    return {
+      id: b.shortname,
+      name: b.name,
+      url: b.url,
+      ...primary,
+      variants,
+    };
+  });
+  return entries.filter(
     (entry): entry is NonNullable<typeof entry> => entry !== null,
   );
-  return cache;
 }
 
 export async function resolveReference(id: string | undefined, file?: string) {

@@ -411,3 +411,53 @@ test("Vercel rewrites preserve OAuth queries and raw webhook bytes without start
   assert.equal(JSON.parse(webhook.body).raw, raw);
   assert.equal(JSON.parse(webhook.body).url, "/api/billing/webhook");
 });
+
+test("an unconfigured Vercel deployment serves the public gallery without enabling account or paid operations", async () => {
+  const { createHandler } = await import("../api/index.ts");
+  const handler = createHandler(() => createCloudApp({ env: {} }));
+  const logos = await request(handler, "/api/index?__path=/api/logos");
+  assert.equal(logos.status, 200);
+  assert.ok(JSON.parse(logos.body).logos.length > 1000);
+  assert.equal(
+    (await request(handler, "/reference/notion.svg")).headers["content-type"],
+    "image/svg+xml",
+  );
+  assert.equal((await request(handler, "/reference/..%2F.env")).status, 404);
+  const account = JSON.parse((await request(handler, "/api/account")).body);
+  assert.equal(account.user, null);
+  assert.equal(account.localMode, false);
+  assert.equal(account.billingReady, false);
+  assert.ok(account.providers.every((provider) => !provider.enabled));
+  assert.equal(account.plans.length, 3);
+  assert.equal(
+    account.socials.github,
+    "https://github.com/korbinjoe/logo2logo",
+  );
+  assert.equal(
+    JSON.parse((await request(handler, "/api/health")).body).connected,
+    false,
+  );
+  for (const path of [
+    "/api/auth/google",
+    "/api/history",
+    "/outputs/test.png",
+  ]) {
+    assert.equal((await request(handler, path)).status, 503, path);
+  }
+  for (const path of [
+    "/api/generate",
+    "/api/territories",
+    "/api/billing/checkout",
+  ]) {
+    assert.equal(
+      (
+        await request(handler, path, {
+          method: "POST",
+          body: { prompt: "test" },
+        })
+      ).status,
+      503,
+      path,
+    );
+  }
+});
