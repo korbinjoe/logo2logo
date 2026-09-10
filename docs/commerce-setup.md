@@ -70,7 +70,7 @@ npm run paddle:setup -- --apply
 
 `PADDLE_SETUP_URL` 必须是用于测试的 HTTPS 站点源地址，不含路径或末尾斜杠。脚本拒绝正式 API Key，使用当前代码中的三个一次性 USD 额度包，税类为 `saas`、税额另加、购买数量限定为 1。它会复用带有 Logo2logo 标记的商品及匹配价格，创建或复用客户端 Token，并配置 `transaction.completed`、`adjustment.created`、`adjustment.updated` 回调。多条同目标回调等歧义会停止执行。
 
-配置 Key 需要 Products、Prices、Client-side tokens、Notification settings 的读写权限。后续结账需要 Transactions 读写；回调测试和退款验证分别需要 Notifications、Notification simulations、Adjustments 权限。默认支付链接需要在 Paddle 后台设为 `PADDLE_SETUP_URL/checkout.html`。
+配置 Key 需要 Products、Prices、Client-side tokens、Notification settings 的读写权限。后续结账需要 Transactions 读写；回调测试和退款验证分别需要 Notifications、Notification simulations、Adjustments 权限。默认支付链接需要在 Paddle 后台设为 `PADDLE_SETUP_URL/checkout.html`。 如果 API 报 `transaction_checkout_url_domain_is_not_approved`，还需在 Checkout → Website Approval 单独登记测试域名；本账户沙盒登记后即时显示 Approved，仅保存默认支付链接不会自动完成登记。
 
 生成结果保存在被 Git 忽略的 `.env.paddle-sandbox`（权限 0600），每次执行会重新生成此文件，终端只输出商品和价格 ID。这个文件是配置结果，不会被应用自动加载；脚本不会修改现有 `.env`、部署环境或开启公开站点购买。应先用于独立的测试部署与数据库，再验证真实沙盒结账、回调入账、退款与重试。脚本成功仅代表资源已配置，不等于端到端支付验证成功。
 
@@ -126,3 +126,7 @@ SOCIAL_YOUTUBE_URL=
 ```
 
 修改配置后重启服务。`GET /api/account` 仅返回登录状态、公开套餐、公开社交地址及提供方是否可用，不返回私密凭据。
+
+## 沙盒验收记录
+
+实际 Paddle.js 结账、拒付、签名回调和重复通知的验证结果见 [paddle-sandbox-verification.md](paddle-sandbox-verification.md)。沙盒验收与正式收款开通分别记录，不以后台向导的完成勾选代替测试证据。
