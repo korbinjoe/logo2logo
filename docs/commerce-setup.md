@@ -54,6 +54,26 @@ Google 申请 `openid profile`，GitHub 申请 `read:user`，只使用提供方�
 
 ## 3. Paddle Sandbox
 
+### 自动配置
+
+已提供基于 Paddle 官方 `catalog-setup`、`checkout-web`、`webhooks` 和 `sandbox-testing` 技能的配置脚本。默认只展示计划，不请求 Paddle：
+
+```bash
+npm run paddle:setup
+```
+
+在本机 `.env` 中设置 `PADDLE_SANDBOX_API_KEY` 和 `PADDLE_SETUP_URL` 后执行：
+
+```bash
+npm run paddle:setup -- --apply
+```
+
+`PADDLE_SETUP_URL` 必须是用于测试的 HTTPS 站点源地址，不含路径或末尾斜杠。脚本拒绝正式 API Key，使用当前代码中的三个一次性 USD 额度包，税类为 `saas`、税额另加、购买数量限定为 1。它会复用带有 Logo2logo 标记的商品及匹配价格，创建或复用客户端 Token，并配置 `transaction.completed`、`adjustment.created`、`adjustment.updated` 回调。多条同目标回调等歧义会停止执行。
+
+配置 Key 需要 Products、Prices、Client-side tokens、Notification settings 的读写权限。后续结账需要 Transactions 读写；回调测试和退款验证分别需要 Notifications、Notification simulations、Adjustments 权限。默认支付链接需要在 Paddle 后台设为 `PADDLE_SETUP_URL/checkout.html`。
+
+生成结果保存在被 Git 忽略的 `.env.paddle-sandbox`（权限 0600），每次执行会重新生成此文件，终端只输出商品和价格 ID。这个文件是配置结果，不会被应用自动加载；脚本不会修改现有 `.env`、部署环境或开启公开站点购买。应先用于独立的测试部署与数据库，再验证真实沙盒结账、回调入账、退款与重试。脚本成功仅代表资源已配置，不等于端到端支付验证成功。
+
 先建立 Sandbox 账户，在目录中创建三项 **一次性** USD 价格：
 
 | 环境变量 | 套餐 | 单价（美元分） | 额度 |

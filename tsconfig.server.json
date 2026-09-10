@@ -16,6 +16,7 @@
   "include": [
     "server.ts",
     "scripts/cloud-server.ts",
+    "scripts/setup-paddle.ts",
     "api/**/*.ts",
     "lib/**/*.ts"
   ]

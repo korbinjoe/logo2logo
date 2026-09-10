@@ -15,6 +15,7 @@
     "format": "prettier --write src lib api server.ts scripts/cloud-server.ts vite.config.ts tsconfig*.json index.html checkout.html",
     "format:check": "prettier --check src lib api server.ts scripts/cloud-server.ts vite.config.ts tsconfig*.json index.html checkout.html",
     "db:migrate": "node scripts/migrate-cloud.mjs",
+    "paddle:setup": "node scripts/setup-paddle.ts",
     "dev:cloud": "node scripts/cloud-server.ts",
     "check:cloud": "node scripts/check-cloud.mjs",
     "check:bundle": "node scripts/check-bundle.mjs",
