@@ -14,7 +14,11 @@ import { join } from "node:path";
 import { createCommerce, plans, socialLinks } from "./commerce.ts";
 import { createRemoteAccounts } from "./remote-accounts.ts";
 import { createCloudState } from "./cloud-state.ts";
-import { createObjectStorage, storageReady } from "./object-storage.ts";
+import {
+  createObjectStorage,
+  storageReady,
+  storageProvider,
+} from "./object-storage.ts";
 import { createCloudGeneration, imageEndpoint } from "./cloud-generation.ts";
 import { gallery, resolveReference, logoRoot } from "./gallery.ts";
 import { websiteInfo } from "./brand-info.ts";
@@ -126,14 +130,14 @@ function createConfiguredCloudApp({
             languageProvider: "opencode-go",
             imageProvider: "fal",
             database: "turso",
-            storage: storageReady(env) ? "r2" : "unconfigured",
+            storage: storageReady(env) ? storageProvider(env) : "unconfigured",
           });
         if (req.method === "GET" && route === "/api/editor-status")
           return json(res, 200, {
             state: imageReady() ? "ready" : "unavailable",
             detail: imageReady()
               ? "Cloud image generation is configured."
-              : "Configure FAL_KEY and R2 storage to enable cloud generation.",
+              : "Configure FAL_KEY and image storage to enable cloud generation.",
           });
         if (req.method === "POST" && route === "/api/territories") {
           const input = await readBody<DesignInput>(req);

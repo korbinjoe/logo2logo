@@ -2,7 +2,8 @@ import "../lib/load-env.ts";
 import { createClient } from "@libsql/client/web";
 import { S3Client, HeadBucketCommand } from "@aws-sdk/client-s3";
 import { cloudConfig } from "../lib/cloud-app.ts";
-import { storageReady } from "../lib/object-storage.ts";
+import { storageReady, storageProvider } from "../lib/object-storage.ts";
+import { checkCloudinaryAccess } from "../lib/cloudinary-storage.ts";
 
 // Read-only readiness check. Never creates a purchase or calls image generation.
 try {
@@ -17,7 +18,7 @@ try {
   if (!process.env.FAL_KEY) throw Error("Configure FAL_KEY.");
   if (!storageReady())
     throw Error(
-      "Configure R2_ENDPOINT, R2_BUCKET, R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY.",
+      "Configure Cloudinary (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET) or R2 storage credentials and STORAGE_PROVIDER.",
     );
   const client = createClient({
     url: process.env.TURSO_DATABASE_URL,
@@ -44,22 +45,29 @@ try {
   } finally {
     client.close();
   }
-  const s3 = new S3Client({
-    region: "auto",
-    endpoint: process.env.R2_ENDPOINT,
-    credentials: {
-      accessKeyId: process.env.R2_ACCESS_KEY_ID,
-      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
-    },
-    maxAttempts: 1,
-  });
-  try {
-    await s3.send(new HeadBucketCommand({ Bucket: process.env.R2_BUCKET }), {
-      abortSignal: AbortSignal.timeout(15000),
+  if (storageProvider() === "cloudinary") {
+    await checkCloudinaryAccess();
+    console.log(
+      "Cloudinary API access: OK (upload/download still require a smoke test)",
+    );
+  } else {
+    const s3 = new S3Client({
+      region: "auto",
+      endpoint: process.env.R2_ENDPOINT,
+      credentials: {
+        accessKeyId: process.env.R2_ACCESS_KEY_ID,
+        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+      },
+      maxAttempts: 1,
     });
-    console.log("R2 bucket access: OK");
-  } finally {
-    s3.destroy();
+    try {
+      await s3.send(new HeadBucketCommand({ Bucket: process.env.R2_BUCKET }), {
+        abortSignal: AbortSignal.timeout(15000),
+      });
+      console.log("R2 bucket access: OK");
+    } finally {
+      s3.destroy();
+    }
   }
   const oauth = ["GOOGLE", "GITHUB"].some(
     (provider) =>

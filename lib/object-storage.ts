@@ -5,8 +5,24 @@ import {
   GetObjectCommand,
 } from "@aws-sdk/client-s3";
 import { fault } from "./accounts.ts";
+import { createCloudinaryStorage } from "./cloudinary-storage.ts";
+
+export function storageProvider(env: Environment = process.env) {
+  const provider =
+    env.STORAGE_PROVIDER || (env.CLOUDINARY_CLOUD_NAME ? "cloudinary" : "r2");
+  return provider === "r2" || provider === "cloudinary"
+    ? provider
+    : "unconfigured";
+}
 
 export function storageReady(env: Environment = process.env) {
+  if (storageProvider(env) === "unconfigured") return false;
+  if (storageProvider(env) === "cloudinary")
+    return [
+      "CLOUDINARY_CLOUD_NAME",
+      "CLOUDINARY_API_KEY",
+      "CLOUDINARY_API_SECRET",
+    ].every((key) => Boolean(env[key]));
   return [
     "R2_ENDPOINT",
     "R2_BUCKET",
@@ -18,6 +34,8 @@ export function createObjectStorage(
   env: Environment = process.env,
 ): ObjectStorage {
   if (!storageReady(env)) throw fault("STORAGE_UNAVAILABLE", 503);
+  if (storageProvider(env) === "cloudinary")
+    return createCloudinaryStorage(env);
   const client = new S3Client({
     region: "auto",
     endpoint: env.R2_ENDPOINT,

@@ -9,7 +9,7 @@
 | 页面 | Vite 构建 `dist/`，Vercel 静态托管 |
 | API | `api/index.ts` → `lib/cloud-app.ts`，Node.js 24，单次最长 300 秒 |
 | 数据库 | Turso/libSQL：账户、OAuth 会话、订单、额度账本、生成任务、历史元数据、规划检查点 |
-| 图片 | Cloudflare R2 私有桶，同源 API 校验所属账户后读取 |
+| 图片 | Cloudinary 受保护图片或 R2 私有桶，同源 API 校验所属账户后读取 |
 | 创意规划 / 初筛 | OpenCode Go，继续使用现有配置 |
 | 图片生成 | fal 的 FLUX.2 klein 4B 异步队列；首轮文生图，微调使用已通过初筛的生成图 |
 
@@ -33,18 +33,34 @@ npm run db:migrate
 
 迁移使用事务并可重复执行，不清空已有表。不要在每次冷启动中创建表或释放任务。迁移不会自动复制本机 `.runtime/accounts.sqlite` 和 `outputs/`；已有真实账户、订单或图片需要单独备份、迁移和校验所有权，不能把匿名本地图片归到任意线上账户。
 
-## 2. 创建 R2 私有存储桶
+## 2. 配置图片存储（推荐免绑卡 Cloudinary）
+
+Cloudinary Free 无需绑定银行卡。注册后，在 Console → Settings → API Keys 获取以下三项，作为服务端环境变量配置到本地 `.env` 和 Vercel：
+
+```dotenv
+STORAGE_PROVIDER=cloudinary
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
+```
+
+上传使用 `authenticated` 类型，原图和衍生图都受到保护。网站验证图片所属账户后，服务端通过有效期 60 秒的签名下载地址读取图片；签名地址和密钥不返回浏览器。图片保存在 `logo2logo/outputs/`，无需手动创建文件夹或开启 unsigned upload preset。
+
+免费额度由存储、流量和图片处理共享，并非无限存储；以 [Cloudinary 当前套餐](https://cloudinary.com/pricing)为准。更换已有存储提供商不会自动迁移旧作品，需要先迁移相同 ID 的图片；不要直接切换有历史图片的环境。
+
+### 可选：R2 私有存储桶
 
 在 Cloudflare R2 创建桶，为该桶创建允许读写对象的 API 凭据，配置：
 
 ```dotenv
+STORAGE_PROVIDER=r2
 R2_ENDPOINT=https://YOUR_ACCOUNT_ID.r2.cloudflarestorage.com
 R2_BUCKET=logo2logo
 R2_ACCESS_KEY_ID=your-access-key-id
 R2_SECRET_ACCESS_KEY=your-secret-access-key
 ```
 
-不需要公开桶，不需要启用 r2.dev，也不需要浏览器直传/CORS。图片只通过 `/outputs/:id.png` 提供；数据库保存元数据，R2 保存 PNG。服务端把输出规范为不超过 1024 × 1024，避免大图片超出函数响应限制。
+不需要公开桶，不需要启用 r2.dev，也不需要浏览器直传/CORS。图片只通过 `/outputs/:id.png` 提供；数据库保存元数据，所选存储服务保存 PNG。服务端把输出规范为不超过 1024 × 1024，避免大图片超出函数响应限制。
 
 ## 3. 配置云端模型与登录
 
@@ -81,13 +97,13 @@ OpenCode Go 只处理文字规划和图像理解，不提供这里的图片生�
 - Root Directory：仓库根目录。
 - Node.js：24.x；启用 Fluid compute。
 - Build Command：`npm run build`；Output Directory：`dist`。
-- Environment Variables：以上 Turso、R2、模型、APP_URL、OAuth 字段；支付和社交字段见 `.env.example`。
+- Environment Variables：以上 Turso、图片存储、模型、APP_URL、OAuth 字段；支付和社交字段见 `.env.example`。
 
 `api/tsconfig.json` 为 Vercel 函数独立选择服务端类型配置，并显式固定类型定义目录，兼容 Vercel 在临时目录调用 TypeScript 7 的编译流程；`npm run build` 仍会执行完整的前后端严格类型检查。品牌图库的冷启动加载共享一个请求并限制文件读取并发，避免云函数文件句柄限制导致品牌缺失。
 
 仓库中的 `vercel.json` 已配置 API、品牌参考 SVG、私有图片路由和 300 秒函数时限。`.vercelignore` 排除本机模型、虚拟环境、日志、生成图片和 `.env`。**不要使用 `npm start` 作为 Vercel 构建命令，也不要给密钥加 `VITE_` 前缀。**
 
-正常提交到已关联的 Git 仓库后，Vercel 会构建部署。也可在完成 Vercel 登录与项目关联后执行 `vercel --prod`。Vercel 项目已完成关联，Turso、R2、fal 和支付资源仍需分别配置。
+正常提交到已关联的 Git 仓库后，Vercel 会构建部署。也可在完成 Vercel 登录与项目关联后执行 `vercel --prod`。Vercel 项目已完成关联，Turso、图片存储、fal 和支付资源仍需分别配置。
 
 ## 5. 配置付款与回调
 
@@ -99,7 +115,7 @@ https://your-site.vercel.app/api/billing/webhook
 
 仅验证过签名的 Paddle 回调可以增加额度；成功页和浏览器参数不能充值。未配置付款时，购买按钮保持不可用；云端绝不启用本地免登录、免额度模式。先完成 Sandbox 验证，再使用获准收款的正式账户与 Production 配置。
 
-fal 的完成回调由服务器提交每个任务时自动设置，无需在控制台另填。每个回调有独立随机凭据，服务器只把它用作查询任务的授权，**不会相信回调正文中的图片 URL 或完成状态**，而会用服务端密钥向 fal 查询结果。完成后写入 R2 和 Turso；重复回调不重复扣费或生成。域名必须可被 fal 访问，不能被 Vercel Deployment Protection 登录页拦截。
+fal 的完成回调由服务器提交每个任务时自动设置，无需在控制台另填。每个回调有独立随机凭据，服务器只把它用作查询任务的授权，**不会相信回调正文中的图片 URL 或完成状态**，而会用服务端密钥向 fal 查询结果。完成后写入图片存储和 Turso；重复回调不重复扣费或生成。域名必须可被 fal 访问，不能被 Vercel Deployment Protection 登录页拦截。
 
 ## 6. 上线检查与恢复
 
@@ -109,7 +125,7 @@ npm run check:bundle
 npm run check:cloud
 ```
 
-`check:cloud` 只读检查数据库表、R2 桶权限与配置是否完整，不消费出图额度，不代替真实 OAuth、Paddle 或模型验收。
+`check:cloud` 只读检查数据库表、Cloudinary API 凭据或 R2 桶权限与配置是否完整，不消费出图额度，不代替真实 OAuth、Paddle 或模型验收。
 
 随后在部署地址确认：首页与品牌墙加载 → 登录 → Sandbox 购买后到账 → 选择参考 → 生成 → 刷新历史 → 微调 → 退出后无法访问原账户图片。真实云服务验收需你自己的已启用账号和密钥；自动化测试使用 libSQL 临时数据库与模拟的 fal/R2 响应。
 
