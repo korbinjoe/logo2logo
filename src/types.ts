@@ -86,6 +86,7 @@ export interface CreditPlan {
   credits: number;
 }
 export interface AccountResponse {
+  isAdmin?: boolean;
   user: Account | null;
   localMode: boolean;
   billingReady: boolean;

@@ -365,7 +365,11 @@ test("cloud HTTP enforces auth, CSRF and readiness; production never bypasses cr
     body: { prompt: "x", referenceId: "notion" },
   });
   assert.equal(missing.status, 503);
-  assert.equal((await store.user(user.id)).credits, 18);
+  assert.equal(
+    (await store.user(user.id)).credits,
+    21,
+    "readiness failure preserves purchased and welcome credits",
+  );
   const logos = JSON.parse((await request(app, "/api/logos")).body);
   assert.ok(logos.logos.length > 1000);
   assert.equal(
@@ -460,4 +464,122 @@ test("an unconfigured Vercel deployment serves the public gallery without enabli
       path,
     );
   }
+});
+
+test("welcome credits survive cold instances and concurrent repeat reads without overwriting paid balances", async (t) => {
+  const { store, open } = await setup(t);
+  const { user } = await funded(store);
+  assert.equal(await store.grantWelcomeCredits(user.id), true);
+  assert.equal((await store.user(user.id)).credits, 21);
+  assert.equal(await open().grantWelcomeCredits(user.id), false);
+  // Two adapters share the local SQLite connection pool; independent cold adapters
+  // are verified above. Turso serializes writes on its remote server.
+  const parallel = createRemoteAccounts({ client: store.db });
+  const fresh = await store.identify("github", "new", "New");
+  const grants = await Promise.all([
+    store.grantWelcomeCredits(fresh.id),
+    parallel.grantWelcomeCredits(fresh.id),
+  ]);
+  assert.equal(grants.filter(Boolean).length, 1);
+  assert.equal((await store.user(fresh.id)).credits, 3);
+  assert.equal(
+    (
+      await store.query(
+        "SELECT * FROM ledger WHERE id=?",
+        `welcome:${fresh.id}`,
+      )
+    ).length,
+    1,
+  );
+});
+
+test("admin credits require authorization and same-origin writes, audit changes, reject stale balances and deduplicate retries", async (t) => {
+  const { store } = await setup(t);
+  const admin = await store.identify("github", "admin", "Owner");
+  const second = await store.identify("google", "admin", "Other owner");
+  const user = await store.identify("google", "user", "Reader");
+  const cookie = `l2l_session=${await store.session(admin.id)}`;
+  const secondCookie = `l2l_session=${await store.session(second.id)}`;
+  const ordinaryCookie = `l2l_session=${await store.session(user.id)}`;
+  const origin = "https://logo.test";
+  const app = createCloudApp({
+    store,
+    env: { APP_URL: origin, ADMIN_USER_IDS: `${admin.id}, ${second.id}` },
+  });
+  const get = (path, c = cookie) => request(app, path, { cookie: c });
+  assert.equal((await get("/api/admin/accounts", "")).status, 401);
+  for (const path of [
+    "/api/admin/accounts",
+    "/api/admin/ledger?userId=" + admin.id,
+  ])
+    assert.equal((await get(path, ordinaryCookie)).status, 403);
+  assert.equal((await get("/api/admin/accounts", secondCookie)).status, 200);
+  assert.equal(JSON.parse((await get("/api/account")).body).isAdmin, true);
+  const ordinary = JSON.parse((await get("/api/account", ordinaryCookie)).body);
+  assert.equal(ordinary.isAdmin, false);
+  assert.equal(ordinary.user.credits, 3);
+  assert.equal(
+    JSON.parse((await get("/api/account", ordinaryCookie)).body).user.credits,
+    3,
+  );
+  const list = JSON.parse((await get("/api/admin/accounts?query=Reader")).body);
+  assert.equal(list.total, 1);
+  assert.equal(list.users[0].id, user.id);
+  assert.equal(list.users[0].providers, "google");
+  assert.equal((await get("/api/admin/accounts?page=-1")).status, 400);
+  const input = {
+    userId: user.id,
+    credits: 12,
+    expectedCredits: 3,
+    reason: "Support credit",
+    operationId: crypto.randomUUID(),
+  };
+  const post = (body = input, overrides = {}) =>
+    request(app, "/api/admin/credits", {
+      method: "POST",
+      cookie,
+      origin,
+      body,
+      ...overrides,
+    });
+  assert.equal((await post(input, { cookie: ordinaryCookie })).status, 403);
+  assert.equal((await post(input, { origin: undefined })).status, 403);
+  assert.equal(
+    (await post(input, { origin: "https://evil.test" })).status,
+    403,
+  );
+  for (const credits of [-1, 1.5, 1000001, "12"])
+    assert.equal((await post({ ...input, credits })).status, 400);
+  assert.equal((await post({ ...input, reason: "" })).status, 400);
+  assert.equal((await post({ ...input, expectedCredits: 0 })).status, 409);
+  const first = await post();
+  assert.equal(first.status, 200);
+  assert.equal(JSON.parse(first.body).user.credits, 12);
+  assert.equal(JSON.parse((await post()).body).applied, false);
+  assert.equal((await post({ ...input, credits: 15 })).status, 409);
+  const ledger = JSON.parse(
+    (await get("/api/admin/ledger?userId=" + user.id)).body,
+  ).entries;
+  const entry = ledger.find((x) => x.id === `admin:${input.operationId}`);
+  assert.equal(entry.delta, 9);
+  assert.equal(JSON.parse(entry.reason).actor, admin.id);
+  assert.equal(JSON.parse(entry.reason).reason, "Support credit");
+  const reset = {
+    ...input,
+    operationId: crypto.randomUUID(),
+    credits: 0,
+    expectedCredits: 12,
+  };
+  assert.equal((await post(reset)).status, 200);
+  assert.equal(
+    JSON.parse((await get("/api/account", ordinaryCookie)).body).user.credits,
+    0,
+    "manual reset must not trigger another welcome grant",
+  );
+  const concurrent = await Promise.all([
+    post({ ...input, operationId: crypto.randomUUID(), expectedCredits: 0 }),
+    post({ ...input, operationId: crypto.randomUUID(), expectedCredits: 0 }),
+  ]);
+  assert.deepEqual(concurrent.map((x) => x.status).sort(), [200, 409]);
+  assert.equal((await store.user(user.id)).credits, 12);
 });

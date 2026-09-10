@@ -113,6 +113,12 @@ export function createAccounts(path: string, { now = Date.now } = {}) {
       };
     },
     user: (id) => get<User>("SELECT * FROM users WHERE id=?", id),
+    grantWelcomeCredits(userId) {
+      return transaction(() => {
+        if (!api.user(userId)) throw fault("ACCOUNT_NOT_FOUND", 404);
+        return adjust(`welcome:${userId}`, userId, 3, "welcome_credits");
+      });
+    },
     identify(provider, subject, name) {
       return transaction(() => {
         const identity = get<Identity>(

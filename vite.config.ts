@@ -9,6 +9,7 @@ export default defineConfig({
       input: {
         main: resolve("index.html"),
         checkout: resolve("checkout.html"),
+        admin: resolve("admin.html"),
       },
     },
   },

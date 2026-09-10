@@ -77,7 +77,7 @@ test('Google and GitHub callbacks exchange PKCE, set secure HttpOnly sessions an
     assert.equal(finish.headers.location,'/?auth=success');assert.match(finish.headers['set-cookie'],/HttpOnly; SameSite=Lax; Max-Age=2592000; Secure/);
     const exchange=calls.findLast(c=>c.url.includes('token'));
     assert.equal(createHash('sha256').update(exchange.options.body.get('code_verifier')).digest('base64url'),target.searchParams.get('code_challenge'));
-    const raw=finish.headers['set-cookie'].split(';')[0].split('=')[1];assert.ok(store.authenticate(raw));
+    const raw=finish.headers['set-cookie'].split(';')[0].split('=')[1];assert.ok(store.authenticate(raw));assert.equal(store.authenticate(raw).credits,3,"OAuth grants three welcome credits before issuing the session");
     assert.equal((await request(commerce,callback,{headers:{cookie}})).headers.location,'/?auth=failed');
   }
   assert.equal(store.db.prepare('SELECT count(*) AS count FROM users').get().count,2,'separate providers are never silently merged');
@@ -110,4 +110,13 @@ test('paid access defaults on; development bypass cannot be enabled in productio
     const commerce=createCommerce({store,env:config});assert.equal(commerce.localMode,false);await assert.rejects(()=>commerce.authorize({headers:{}}),{code:'AUTH_REQUIRED'});
   }
   assert.equal(createCommerce({store,env:{BILLING_REQUIRED:'false',APP_URL:'http://127.0.0.1:4173'}}).localMode,true);
+});
+
+test('local welcome gift is once per account and does not replace purchased credits',t=>{
+  const store=setup(t),user=store.identify('google','gift','Gift');
+  store.fulfill(paid(store,user));
+  assert.equal(store.grantWelcomeCredits(user.id),true);
+  assert.equal(store.grantWelcomeCredits(user.id),false);
+  assert.equal(store.user(user.id).credits,21);
+  assert.equal(store.db.prepare('SELECT delta FROM ledger WHERE id=?').get(`welcome:${user.id}`).delta,3);
 });

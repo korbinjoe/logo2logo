@@ -43,7 +43,22 @@ export function createRemoteAccounts({
   });
   async function transaction<T>(work: () => Promise<T>): Promise<T> {
     if (context.getStore()) return work();
-    const tx = await client.transaction("write");
+    // Retry only lock contention while opening a transaction, before any writes.
+    // Never replay a transaction after an uncertain commit/network response.
+    async function begin() {
+      for (let attempt = 0; ; attempt++) {
+        try {
+          return await client.transaction("write");
+        } catch (cause) {
+          if (asError(cause).code !== "SQLITE_BUSY" || attempt >= 3)
+            throw cause;
+          await new Promise((resolve) =>
+            setTimeout(resolve, 25 * 2 ** attempt),
+          );
+        }
+      }
+    }
+    const tx = await begin();
     try {
       const result = await context.run(tx, work);
       await tx.commit();
@@ -126,6 +141,12 @@ export function createRemoteAccounts({
       };
     },
     user: async (id) => await get<User>("SELECT * FROM users WHERE id=?", id),
+    async grantWelcomeCredits(userId) {
+      return transaction(async () => {
+        if (!(await api.user(userId))) throw fault("ACCOUNT_NOT_FOUND", 404);
+        return adjust(`welcome:${userId}`, userId, 3, "welcome_credits");
+      });
+    },
     async identify(provider, subject, name) {
       return transaction(async () => {
         const identity = await get<Identity>(

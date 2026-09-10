@@ -89,6 +89,11 @@ export function AccountDialog() {
         >
           {t("history.title")} ↗
         </a>
+        {config?.isAdmin && (
+          <a href="/admin.html" className="account-history-link">
+            {t("shop.admin")}
+          </a>
+        )}
         <h3>{t("shop.history")}</h3>
         <div id="accountHistory" className="account-history">
           {config?.designs.map((design) => (

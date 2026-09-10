@@ -16,6 +16,14 @@ import { createHash } from "node:crypto";
 import { createAccounts, token, fault } from "./accounts.ts";
 import { oauthFetch } from "./oauth-fetch.ts";
 
+export function isAdmin(userId: string, env: Env = process.env) {
+  return (env.ADMIN_USER_IDS || "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean)
+    .includes(userId);
+}
+
 export const plans = Object.freeze([
   { id: "starter", name: "Starter", amount: 1200, credits: 18 },
   { id: "creator", name: "Creator", amount: 2400, credits: 60 },
@@ -159,8 +167,13 @@ export function createCommerce({
         route = url.pathname;
       if (req.method === "GET" && route === "/api/account") {
         const account = await user(req);
+        if (account) {
+          await accounts.grantWelcomeCredits(account.id);
+          account.credits = (await accounts.user(account.id))!.credits;
+        }
         send(res, 200, {
           user: account,
+          isAdmin: Boolean(account && isAdmin(account.id, env)),
           designs: account ? await accounts.designs(account.id) : [],
           providers,
           billingReady: ready,
@@ -245,6 +258,7 @@ export function createCommerce({
             String(subject),
             String(profile.name || profile.login || "Creator").slice(0, 100),
           );
+          await accounts.grantWelcomeCredits(account.id);
           await accounts.logout(cookie(req, "l2l_session"));
           setCookie(
             res,

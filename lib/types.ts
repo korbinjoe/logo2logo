@@ -73,6 +73,7 @@ export interface AccountOperations {
   ): { items: HistoryEntry[]; total: number };
   user(id: string): User | undefined;
   identify(provider: string, subject: string, name: string): User;
+  grantWelcomeCredits(userId: string): boolean;
   session(userId: string): string;
   authenticate(raw?: string): User | null;
   logout(raw?: string): void;

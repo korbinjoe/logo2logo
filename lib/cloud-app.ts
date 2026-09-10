@@ -11,7 +11,8 @@ import { asError } from "./errors.ts";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { createCommerce, plans, socialLinks } from "./commerce.ts";
+import { createCommerce, plans, socialLinks, isAdmin } from "./commerce.ts";
+import { listAdminAccounts, adjustAdminCredits } from "./admin-credits.ts";
 import { createRemoteAccounts } from "./remote-accounts.ts";
 import { createCloudState } from "./cloud-state.ts";
 import {
@@ -118,6 +119,43 @@ function createConfiguredCloudApp({
         )
           throw fault("CROSS_ORIGIN", 403);
         if (await commerce.handle(req, res, readBody)) return;
+        if (route.startsWith("/api/admin/")) {
+          const admin = await commerce.requireUser(req);
+          if (!isAdmin(admin.id, env)) throw fault("ADMIN_REQUIRED", 403);
+          if (req.method === "GET" && route === "/api/admin/accounts") {
+            const page = Number(url.searchParams.get("page") || 0);
+            if (!Number.isSafeInteger(page) || page < 0 || page > 10000)
+              throw fault("INVALID_PAGE");
+            return json(
+              res,
+              200,
+              await listAdminAccounts(
+                accounts,
+                url.searchParams.get("query") || "",
+                page,
+              ),
+            );
+          }
+          if (req.method === "GET" && route === "/api/admin/ledger") {
+            const userId = url.searchParams.get("userId") || "";
+            return json(res, 200, {
+              entries: await accounts.query(
+                "SELECT id,delta,reason,created FROM ledger WHERE user_id=? ORDER BY created DESC,id DESC LIMIT 50",
+                userId,
+              ),
+            });
+          }
+          if (req.method === "POST" && route === "/api/admin/credits") {
+            if (req.headers.origin !== commerce.origin)
+              throw fault("CROSS_ORIGIN", 403);
+            return json(
+              res,
+              200,
+              await adjustAdminCredits(accounts, admin.id, await readBody(req)),
+            );
+          }
+          throw fault("NOT_FOUND", 404);
+        }
         if (req.method === "GET" && route === "/api/health")
           return json(res, 200, {
             connected: languageReady() && imageReady(),

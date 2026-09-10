@@ -388,8 +388,8 @@ Object.assign(messages, {
   ],
   "shop.faq2": ["Can I explore before paying?", "付款前能体验什么？"],
   "shop.faq2a": [
-    "Browse the reference library and write your brief for free. Sign in and purchase credits when you are ready to generate. Three available credits are needed to start a new exploration.",
-    "可免费浏览参考品牌库、填写简报。准备生成时再登录购买；开始一次全新探索需要至少 3 次可用额度。",
+    "Sign in to receive 3 free welcome credits per account, enough for your first three-direction exploration. You can purchase more credits when needed.",
+    "每个账号登录后一次性获赠 3 次免费额度，可体验首次三方向探索。需要更多时可购买额度。",
   ],
   "shop.faq3": ["What do I receive?", "我会得到什么？"],
   "shop.faq3a": [
@@ -401,8 +401,8 @@ Object.assign(messages, {
     "让下一个想法，有个样子。",
   ],
   "shop.loginHelp": [
-    "Sign in to buy credits and keep your logos in one place.",
-    "登录后即可购买额度，保存你的 Logo。",
+    "Sign in for 3 free welcome credits and keep your logos in one place.",
+    "登录即享一次性 3 次免费额度，并保存你的 Logo。",
   ],
   "shop.google": ["Continue with Google", "使用 Google 继续"],
   "shop.github": ["Continue with GitHub", "使用 GitHub 继续"],
@@ -470,6 +470,7 @@ Object.assign(messages, {
     "操作未完成，请重试。",
   ],
   "shop.soon": ["Coming soon", "即将上线"],
+  "shop.admin": ["Manage account credits ↗", "管理账号额度 ↗"],
   "shop.history": ["Your recent logos", "最近生成的 Logo"],
   "shop.noHistory": [
     "Your first logo is still ahead of you.",
