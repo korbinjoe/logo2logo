@@ -69,6 +69,8 @@ export function Header() {
   const [expanded, setExpanded] = useState(false),
     ref = useRef<HTMLDetailsElement>(null),
     headerRef = useRef<HTMLElement>(null);
+  const account = config?.user;
+  const accountName = account?.name.trim() || t("shop.account");
   useEffect(() => {
     const header = headerRef.current;
     if (!header) return;
@@ -227,12 +229,26 @@ export function Header() {
         type="button"
         className="account-button"
         data-commerce
+        title={account ? accountName : undefined}
+        aria-label={
+          account ? `${accountName} · ${t("shop.account")}` : t("shop.signin")
+        }
+        aria-haspopup="dialog"
         onClick={() => {
           setOpen(true);
           void refresh().catch(() => {});
         }}
       >
-        {t(config?.user ? "shop.account" : "shop.signin")}
+        {account ? (
+          <>
+            <span className="account-avatar" aria-hidden="true">
+              {Array.from(accountName)[0].toLocaleUpperCase(locale)}
+            </span>
+            <span className="account-button-name">{accountName}</span>
+          </>
+        ) : (
+          t("shop.signin")
+        )}
       </button>
     </header>
   );

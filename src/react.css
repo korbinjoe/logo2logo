@@ -11,6 +11,30 @@ html {
   top: 0;
   z-index: 30;
 }
+.masthead .account-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+}
+.account-avatar {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 600;
+}
+.account-button-name {
+  max-width: 128px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 [data-theme="mint"] .masthead {
   background: var(--paper);
   border-bottom: 1px solid var(--line);
@@ -19,6 +43,9 @@ html {
   max-height: min(720px, calc(100dvh - var(--masthead-height, 90px) - 36px));
 }
 @media (max-width: 760px) {
+  .account-button-name {
+    max-width: 88px;
+  }
   .masthead .theme-panel {
     top: calc(var(--masthead-height, 90px) + 10px);
   }
