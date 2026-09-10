@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import type { AccountResponse, PlanId, ProviderId } from "./types";
-import { post, request } from "./lib/api";
+import { ApiError, post, request } from "./lib/api";
 import { useAppState } from "./state";
 interface CommerceState {
   config: AccountResponse | null;
@@ -24,6 +24,7 @@ interface CommerceState {
   checkPayment: () => Promise<void>;
   showCheck: boolean;
   checkoutBusy: boolean;
+  checkoutFeedback: { plan: PlanId; message: string } | null;
 }
 const Context = createContext<CommerceState | null>(null);
 export function CommerceProvider({ children }: { children: ReactNode }) {
@@ -31,6 +32,10 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<AccountResponse | null>(null),
     [open, setOpen] = useState(false),
     [checkoutBusy, setCheckoutBusy] = useState(false);
+  const [checkoutFeedback, setCheckoutFeedback] = useState<{
+    plan: PlanId;
+    key: string;
+  } | null>(null);
   const [noticeState, setNotice] = useState<{
       key: string;
       count?: number;
@@ -45,6 +50,7 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
     const id = ++refreshId.current;
     const result = await request<AccountResponse>("/api/account", {
       cache: "no-store",
+      signal: AbortSignal.timeout(15000),
     });
     if (mounted.current && id === refreshId.current) setConfig(result);
     return result;
@@ -76,24 +82,40 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
     if (buyLock.current) return;
     buyLock.current = true;
     setCheckoutBusy(true);
+    setCheckoutFeedback({ plan, key: "shop.checkingCheckout" });
+    setNotice(null);
     update("selectedPlan", plan);
     try {
       const current = await refresh();
+      if (!current.billingReady) {
+        setCheckoutFeedback({ plan, key: "shop.billingSoon" });
+        return;
+      }
       if (!current.user) {
+        setCheckoutFeedback({ plan, key: "shop.checkoutSignIn" });
         setOpen(true);
         return;
       }
-      if (!current.billingReady) {
-        setNotice({ key: "shop.billingSoon" });
-        return;
-      }
-      const result = await post<{ url: string }>("/api/billing/checkout", {
-        plan,
-        locale,
+      setCheckoutFeedback({ plan, key: "shop.openingCheckout" });
+      const result = await request<{ url: string }>("/api/billing/checkout", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ plan, locale }),
+        signal: AbortSignal.timeout(30000),
       });
       location.assign(result.url);
-    } catch {
-      setNotice({ key: "shop.error" });
+    } catch (error) {
+      const code = error instanceof ApiError ? error.data.code : undefined;
+      setCheckoutFeedback({
+        plan,
+        key:
+          code === "BILLING_UNAVAILABLE"
+            ? "shop.billingSoon"
+            : code === "AUTH_REQUIRED"
+              ? "shop.checkoutSignIn"
+              : "shop.checkoutError",
+      });
+      if (code === "AUTH_REQUIRED") setOpen(true);
     } finally {
       buyLock.current = false;
       setCheckoutBusy(false);
@@ -187,6 +209,9 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
         },
         showCheck,
         checkoutBusy,
+        checkoutFeedback: checkoutFeedback
+          ? { plan: checkoutFeedback.plan, message: t(checkoutFeedback.key) }
+          : null,
       }}
     >
       {children}

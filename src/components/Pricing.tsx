@@ -9,8 +9,15 @@ const defaultPlans: CreditPlan[] = [
 ];
 export function Pricing() {
   const { t, preferences } = useAppState(),
-    { config, buy, notice, showCheck, checkPayment, checkoutBusy } =
-      useCommerce();
+    {
+      config,
+      buy,
+      notice,
+      showCheck,
+      checkPayment,
+      checkoutBusy,
+      checkoutFeedback,
+    } = useCommerce();
   return (
     <section
       id="pricing"
@@ -88,11 +95,30 @@ export function Pricing() {
               data-buy={plan.id}
               data-commerce
               aria-pressed={preferences.selectedPlan === plan.id}
-              disabled={checkoutBusy}
+              aria-describedby={`checkout-feedback-${plan.id}`}
+              aria-busy={checkoutBusy && checkoutFeedback?.plan === plan.id}
+              disabled={checkoutBusy || config?.billingReady === false}
               onClick={() => void buy(plan.id)}
             >
-              {t("shop.buy", { count: plan.credits })}
+              {checkoutBusy && checkoutFeedback?.plan === plan.id
+                ? t("shop.checkingCheckout")
+                : config?.billingReady === false
+                  ? t("shop.purchasesUnavailable")
+                  : t("shop.buy", { count: plan.credits })}
             </button>
+            <p
+              id={`checkout-feedback-${plan.id}`}
+              className="pack-checkout-feedback"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              {checkoutFeedback?.plan === plan.id
+                ? checkoutFeedback.message
+                : config?.billingReady === false
+                  ? t("shop.billingSoon")
+                  : ""}
+            </p>
           </article>
         ))}
       </div>

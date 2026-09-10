@@ -50,3 +50,20 @@ html {
     top: calc(var(--masthead-height, 90px) + 10px);
   }
 }
+
+.credit-pack button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.credit-pack button[aria-busy="true"] {
+  cursor: progress;
+}
+.pack-checkout-feedback {
+  margin: 12px 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--ink);
+}
+.pack-checkout-feedback:empty {
+  display: none;
+}

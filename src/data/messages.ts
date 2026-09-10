@@ -421,6 +421,17 @@ Object.assign(messages, {
     "Credit purchases are not open yet. You can still explore the reference library.",
     "额度购买暂未开放，你仍可免费浏览参考品牌库。",
   ],
+  "shop.purchasesUnavailable": ["Purchases coming soon", "购买暂未开放"],
+  "shop.checkingCheckout": ["Please wait…", "请稍候…"],
+  "shop.openingCheckout": ["Opening secure checkout…", "正在打开安全结账…"],
+  "shop.checkoutSignIn": [
+    "Sign in to continue with this credit pack.",
+    "请先登录，再购买此额度套餐。",
+  ],
+  "shop.checkoutError": [
+    "Checkout could not be opened. Please try again.",
+    "无法打开结账，请重试。",
+  ],
   "shop.testMode": [
     "Test checkout · no real payment",
     "测试结账 · 不会实际扣款",
