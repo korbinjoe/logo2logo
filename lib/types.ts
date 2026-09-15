@@ -60,6 +60,7 @@ export interface Payment {
   amount: number;
 }
 export interface Refund {
+  cumulative?: boolean;
   id: string;
   session: string;
   amount: number;
@@ -92,10 +93,7 @@ export interface AccountOperations {
   setCheckout(id: string, session: string): void;
   fulfill(payment: Payment): boolean;
   refund(refund: Refund): void;
-  checkoutOrder(
-    session: string | null,
-    userId: string,
-  ): Pick<Order, "paid"> | undefined;
+  checkoutOrder(session: string | null, userId: string): Order | undefined;
 }
 export type AsyncOperations = {
   [K in keyof AccountOperations]: AccountOperations[K] extends (

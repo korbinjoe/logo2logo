@@ -362,6 +362,7 @@ Object.assign(messages, {
     "最多 {count} 轮三方向探索",
   ],
   "shop.buy": ["Get {count} credits ↗", "购买 {count} 次额度 ↗"],
+  "shop.paymentMethod": ["Pay securely with PayPal", "通过 PayPal 安全付款"],
   "shop.features": [
     "Reference-guided generation · PNG downloads · Color adjustments",
     "基于参考设计 · PNG 下载 · 颜色调整",
@@ -371,8 +372,8 @@ Object.assign(messages, {
     "生成 1 张图扣 1 次额度，完整探索扣 3 次。重绘、微调每张各扣 1 次；技术失败自动返还额度。",
   ],
   "shop.expiry": [
-    "Credits do not expire. Taxes, if applicable, are shown at checkout.",
-    "额度不过期。如需缴税，将在结账时显示。",
+    "Credits do not expire. Purchases are charged once in USD.",
+    "额度不过期，按美元一次性收取套餐费用。",
   ],
   "shop.ready": [
     "One payment. Your next possibilities.",
@@ -423,7 +424,7 @@ Object.assign(messages, {
   ],
   "shop.purchasesUnavailable": ["Purchases coming soon", "购买暂未开放"],
   "shop.checkingCheckout": ["Please wait…", "请稍候…"],
-  "shop.openingCheckout": ["Opening secure checkout…", "正在打开安全结账…"],
+  "shop.openingCheckout": ["Opening PayPal checkout…", "正在打开 PayPal 结账…"],
   "shop.checkoutSignIn": [
     "Sign in to continue with this credit pack.",
     "请先登录，再购买此额度套餐。",

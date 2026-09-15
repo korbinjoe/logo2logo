@@ -1,11 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createHmac,createHash} from 'node:crypto';
+import {createHash} from 'node:crypto';
 import {Readable} from 'node:stream';
 import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {Paddle,Environment} from '@paddle/paddle-node-sdk';
 import {createAccounts} from '../lib/accounts.ts';
 import {createCommerce,plans} from '../lib/commerce.ts';
 
@@ -60,7 +59,7 @@ test('OAuth state expires, cannot cross browsers/providers, and is single-use; s
   assert.equal(store.authenticate(session).id,user.id);store.logout(session);assert.equal(store.authenticate(session),null);
   const another=store.session(user.id);now+=31*86400_000;assert.equal(store.authenticate(another),null);
 });
-const env={APP_URL:'https://logo.example',GOOGLE_CLIENT_ID:'google-client',GOOGLE_CLIENT_SECRET:'test-secret',GITHUB_CLIENT_ID:'github-client',GITHUB_CLIENT_SECRET:'test-secret',PADDLE_WEBHOOK_SECRET:'webhook-test-secret',PADDLE_CLIENT_TOKEN:'test_client_token',PADDLE_PRICE_STARTER:'pri_starter',PADDLE_PRICE_CREATOR:'pri_creator',PADDLE_PRICE_STUDIO:'pri_studio'};
+const env={APP_URL:'https://logo.example',GOOGLE_CLIENT_ID:'google-client',GOOGLE_CLIENT_SECRET:'test-secret',GITHUB_CLIENT_ID:'github-client',GITHUB_CLIENT_SECRET:'test-secret'};
 async function request(commerce,path,{method='GET',headers={},body=''}={}){
   const req=Readable.from([Buffer.from(typeof body==='string'?body:JSON.stringify(body))]);Object.assign(req,{method,url:path,headers});
   const result={headers:{},status:0,body:''},res={setHeader:(k,v)=>result.headers[k]=v,writeHead:(status,headers)=>{result.status=status;Object.assign(result.headers,headers);},end:body=>result.body=body || ''};
@@ -81,28 +80,6 @@ test('Google and GitHub callbacks exchange PKCE, set secure HttpOnly sessions an
     assert.equal((await request(commerce,callback,{headers:{cookie}})).headers.location,'/?auth=failed');
   }
   assert.equal(store.db.prepare('SELECT count(*) AS count FROM users').get().count,2,'separate providers are never silently merged');
-});
-test('checkout prices are server-owned; signed Paddle webhooks grant once and status never grants',async t=>{
-  const store=setup(t),user=store.identify('google','1','Alice'),raw=store.session(user.id),cookie=`l2l_session=${raw}`;
-  let order;
-  const sdk=new Paddle('test_key',{environment:Environment.sandbox});
-  const paddleClient={webhooks:sdk.webhooks,prices:{get:async()=>({status:'active',billingCycle:null,unitPrice:{amount:'1200',currencyCode:'USD'},taxMode:'external',unitPriceOverrides:[]})},transactions:{create:async input=>{order=input;return {id:'txn_purchased'};}}};
-  const commerce=createCommerce({store,env,paddleClient});
-  await assert.rejects(request(commerce,'/api/billing/checkout',{method:'POST',body:{plan:'starter'}}),{code:'AUTH_REQUIRED'});
-  await assert.rejects(request(commerce,'/api/billing/checkout',{method:'POST',headers:{cookie},body:{plan:'invented'}}),{code:'INVALID_PLAN'});
-  const checkout=await request(commerce,'/api/billing/checkout',{method:'POST',headers:{cookie},body:{plan:'starter',amount:1,credits:9999}});
-  assert.match(JSON.parse(checkout.body).url,/transaction_id=txn_purchased/);assert.deepEqual(order.items,[{priceId:'pri_starter',quantity:1}]);
-  assert.equal(JSON.parse((await request(commerce,'/api/billing/status?session_id=txn_purchased',{headers:{cookie}})).body).paid,false);
-  const event={event_type:'transaction.completed',data:{id:'txn_purchased',status:'completed',currency_code:'USD',custom_data:order.customData,items:[{quantity:1,price:{id:'pri_starter',unit_price:{amount:'1200',currency_code:'USD'},unit_price_overrides:[],quantity:{minimum:1,maximum:1}}}],payments:[],details:{tax_rates_used:[],line_items:[],totals:{subtotal:'1200',discount:'0'}}}};
-  const payload=JSON.stringify(event),ts=Math.floor(Date.now()/1000);
-  const signature=`ts=${ts};h1=${createHmac('sha256',env.PADDLE_WEBHOOK_SECRET).update(`${ts}:${payload}`).digest('hex')}`;
-  await assert.rejects(request(commerce,'/api/billing/webhook',{method:'POST',headers:{'paddle-signature':'invalid'},body:payload}),{code:'INVALID_SIGNATURE'});
-  await assert.rejects(request(commerce,'/api/billing/webhook',{method:'POST',headers:{'paddle-signature':signature},body:payload+' '}),{code:'INVALID_SIGNATURE'});
-  for(let i=0;i<2;i++)assert.equal((await request(commerce,'/api/billing/webhook',{method:'POST',headers:{'paddle-signature':signature},body:payload})).status,200);
-  assert.equal(store.user(user.id).credits,18);
-  const other=store.session(store.identify('github','2','Bob').id);
-  await assert.rejects(request(commerce,'/api/billing/status?session_id=txn_purchased',{headers:{cookie:`l2l_session=${other}`}}),{code:'ORDER_NOT_FOUND'});
-  assert.equal(JSON.parse((await request(commerce,'/api/billing/status?session_id=txn_purchased',{headers:{cookie}})).body).paid,true);
 });
 test('paid access defaults on; development bypass cannot be enabled in production or on public hosts',async t=>{
   const store=setup(t);

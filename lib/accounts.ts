@@ -310,7 +310,9 @@ export function createAccounts(path: string, { now = Date.now } = {}) {
         if (!Number.isSafeInteger(refund.amount) || refund.amount < 0)
           throw fault("PAYMENT_MISMATCH");
         run(
-          "INSERT OR IGNORE INTO refunds VALUES(?,?,?)",
+          refund.cumulative
+            ? "INSERT INTO refunds VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET amount=MAX(refunds.amount,excluded.amount) WHERE refunds.session=excluded.session"
+            : "INSERT OR IGNORE INTO refunds VALUES(?,?,?)",
           refund.id,
           refund.session,
           refund.amount,
@@ -319,8 +321,8 @@ export function createAccounts(path: string, { now = Date.now } = {}) {
       });
     },
     checkoutOrder(session, userId) {
-      return get<Pick<Order, "paid">>(
-        "SELECT paid FROM orders WHERE session=? AND user_id=?",
+      return get<Order>(
+        "SELECT * FROM orders WHERE session=? AND user_id=?",
         session,
         userId,
       );

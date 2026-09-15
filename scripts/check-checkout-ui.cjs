@@ -146,4 +146,4 @@ async (page) => {
   await page.unroute("**/api/billing/checkout");
   await page.unroute("**/api/history?*");
   return result;
-}
+};

@@ -137,11 +137,21 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
   const checkPayment = useCallback(async () => {
     clearTimeout(paymentTimer.current);
     const params = new URLSearchParams(location.search);
+    setNotice({ key: "shop.pending" });
     try {
-      const status = await request<{ paid: boolean }>(
-        `/api/billing/status?session_id=${encodeURIComponent(params.get("session_id") || "")}`,
-        { cache: "no-store" },
-      );
+      const orderId = params.get("token") || params.get("session_id") || "";
+      const status =
+        params.get("checkout") === "approved"
+          ? await request<{ paid: boolean }>("/api/billing/capture", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ orderId }),
+              signal: AbortSignal.timeout(45000),
+            })
+          : await request<{ paid: boolean }>(
+              `/api/billing/status?session_id=${encodeURIComponent(orderId)}`,
+              { cache: "no-store" },
+            );
       if (!mounted.current) return;
       if (status.paid) {
         setNotice({ key: "shop.paid" });
@@ -173,7 +183,8 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
         }
         if (params.get("checkout") === "cancelled")
           setNotice({ key: "shop.cancelled" });
-        if (params.get("checkout") === "success") void checkPayment();
+        if (["success", "approved"].includes(params.get("checkout") || ""))
+          void checkPayment();
       })
       .catch(() => {
         if (mounted.current) setNotice({ key: "shop.error" });

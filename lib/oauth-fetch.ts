@@ -3,7 +3,7 @@ import { EnvHttpProxyAgent, fetch } from "undici";
 
 let dispatcher: EnvHttpProxyAgent | undefined;
 
-// Apply the launcher's HTTP(S)_PROXY / NO_PROXY only to OAuth provider traffic.
+// Apply the launcher's HTTP(S)_PROXY / NO_PROXY to OAuth and PayPal provider traffic.
 // Construct lazily so .env has been loaded before resolving proxy settings.
 export function oauthFetch(url: string, options: RequestInit = {}) {
   dispatcher ||= new EnvHttpProxyAgent();

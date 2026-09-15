@@ -85,7 +85,7 @@ https://your-site.vercel.app/api/auth/google/callback
 https://your-site.vercel.app/api/auth/github/callback
 ```
 
-`APP_URL` 必须是当前用户实际访问的固定域名。更换自定义域名时同步更新它及 OAuth 回调。不要把生产用户导向随机 Preview 域名；若需要 Preview 联调，使用独立数据库、固定测试域名与 Sandbox 支付配置。
+`APP_URL` 必须是当前用户实际访问的固定域名。更换自定义域名时同步更新它及 OAuth 回调。不要把生产用户导向随机 Preview 域名；若需要 Preview 联调，使用独立数据库、固定测试域名与 PayPal 沙盒支付配置。
 
 OpenCode Go 只处理文字规划和图像理解，不提供这里的图片生成能力。fal 需要单独的密钥及可用额度，图片推理不属于 Vercel/Turso 免费额度。首轮 `exploration-v2` 使用 `fal-ai/flux-2/klein/4b`；选稿微调使用 `fal-ai/flux-2/klein/4b/edit`。
 
@@ -107,13 +107,13 @@ OpenCode Go 只处理文字规划和图像理解，不提供这里的图片生�
 
 ## 5. 配置付款与回调
 
-继续使用 Paddle 一次性额度包。完整变量和 Sandbox 测试步骤见 [登录与收款配置](commerce-setup.md)。Paddle 通知目标：
+使用 PayPal Checkout 一次性额度包。完整变量和 PayPal 沙盒测试步骤见 [登录与收款配置](commerce-setup.md)。PayPal 通知目标：
 
 ```text
 https://your-site.vercel.app/api/billing/webhook
 ```
 
-仅验证过签名的 Paddle 回调可以增加额度；成功页和浏览器参数不能充值。未配置付款时，购买按钮保持不可用；云端绝不启用本地免登录、免额度模式。先完成 Sandbox 验证，再使用获准收款的正式账户与 Production 配置。
+仅服务端验证过的 PayPal capture 结果可以增加额度；浏览器参数不能证明付款成功。Webhook 使用 PayPal 官方接口验签。未配置付款时，购买按钮保持不可用；云端绝不启用本地免登录、免额度模式。先完成 PayPal 沙盒验证，再使用获准收款的正式账户与 Live 配置。
 
 fal 的完成回调由服务器提交每个任务时自动设置，无需在控制台另填。每个回调有独立随机凭据，服务器只把它用作查询任务的授权，**不会相信回调正文中的图片 URL 或完成状态**，而会用服务端密钥向 fal 查询结果。完成后写入图片存储和 Turso；重复回调不重复扣费或生成。域名必须可被 fal 访问，不能被 Vercel Deployment Protection 登录页拦截。
 
@@ -125,9 +125,9 @@ npm run check:bundle
 npm run check:cloud
 ```
 
-`check:cloud` 只读检查数据库表、Cloudinary API 凭据或 R2 桶权限与配置是否完整，不消费出图额度，不代替真实 OAuth、Paddle 或模型验收。
+`check:cloud` 只读检查数据库表、Cloudinary API 凭据或 R2 桶权限与配置是否完整，不消费出图额度，不代替真实 OAuth、PayPal 或模型验收。
 
-随后在部署地址确认：首页与品牌墙加载 → 登录 → Sandbox 购买后到账 → 选择参考 → 生成 → 刷新历史 → 微调 → 退出后无法访问原账户图片。真实云服务验收需你自己的已启用账号和密钥；自动化测试使用 libSQL 临时数据库与模拟的 fal/R2 响应。
+随后在部署地址确认：首页与品牌墙加载 → 登录 → PayPal 沙盒购买后到账 → 选择参考 → 生成 → 刷新历史 → 微调 → 退出后无法访问原账户图片。真实云服务验收需你自己的已启用账号和密钥；自动化测试使用 libSQL 临时数据库与模拟的 fal/R2 响应。
 
 出图 POST 返回任务 ID，浏览器轮询该任务。数据库保留任务和上游请求 ID，冷启动、刷新、重试都不会重新提交已有任务。用户关闭页面后，由 fal 回调完成入库。若回调暂时失败，可在“生成历史”中手动“查看生成进度”恢复；不自动创建另一笔付费出图。规划检查点保存 30 分钟，每接受一个方向就写库；单次规划在 240 秒内返回已有方向，之后可续跑。技术性出图失败返还一次额度；暂时的网络或存储异常保留任务供恢复。
 

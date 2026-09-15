@@ -79,15 +79,13 @@ try {
       (oauth ? "present (verify callback URL in provider console)" : "missing"),
   );
   const billing = [
-    "PADDLE_API_KEY",
-    "PADDLE_CLIENT_TOKEN",
-    "PADDLE_WEBHOOK_SECRET",
-    "PADDLE_PRICE_STARTER",
-    "PADDLE_PRICE_CREATOR",
-    "PADDLE_PRICE_STUDIO",
+    "PAYPAL_CLIENT_ID",
+    "PAYPAL_CLIENT_SECRET",
+    "PAYPAL_MERCHANT_ID",
+    "PAYPAL_WEBHOOK_ID",
   ].every((key) => Boolean(process.env[key]));
   console.log(
-    "Paddle configuration: " +
+    "PayPal configuration: " +
       (billing
         ? "present (verify sandbox checkout before launch)"
         : "missing; purchases remain disabled"),

@@ -15,3 +15,6 @@ footer .brand img{width:138px;height:32px}
   .masthead .social-links{grid-area:social;gap:12px}
   .masthead .appearance{grid-area:appearance;justify-self:end}
 }
+
+/* Policy links remain visible across themes and mobile layouts. */
+footer{flex-wrap:wrap}footer .footer-policies{display:flex;flex:0 0 100%;flex-wrap:wrap;gap:12px 24px;padding-top:18px;border-top:1px solid var(--line);font-size:12px}footer .footer-policies a{text-decoration:underline;text-underline-offset:4px}

@@ -347,7 +347,9 @@ export function createRemoteAccounts({
         if (!Number.isSafeInteger(refund.amount) || refund.amount < 0)
           throw fault("PAYMENT_MISMATCH");
         await run(
-          "INSERT OR IGNORE INTO refunds VALUES(?,?,?)",
+          refund.cumulative
+            ? "INSERT INTO refunds VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET amount=MAX(refunds.amount,excluded.amount) WHERE refunds.session=excluded.session"
+            : "INSERT OR IGNORE INTO refunds VALUES(?,?,?)",
           refund.id,
           refund.session,
           refund.amount,
@@ -356,8 +358,8 @@ export function createRemoteAccounts({
       });
     },
     async checkoutOrder(session, userId) {
-      return await get<Pick<Order, "paid">>(
-        "SELECT paid FROM orders WHERE session=? AND user_id=?",
+      return await get<Order>(
+        "SELECT * FROM orders WHERE session=? AND user_id=?",
         session,
         userId,
       );

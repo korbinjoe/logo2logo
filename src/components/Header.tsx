@@ -254,13 +254,22 @@ export function Header() {
   );
 }
 export function Footer() {
-  const { t } = useAppState();
+  const { t, locale } = useAppState();
   return (
     <footer>
       <BrandMark footer />
       <p>{t("好标志，始于一个好想法。")}</p>
       <span>{t("MADE FOR YOUR NEXT IDEA ↗")}</span>
       <SocialLinks />
+      <nav
+        className="footer-policies"
+        aria-label={locale === "zh" ? "政策与联系" : "Policies and contact"}
+      >
+        <a href="/terms.html">{locale === "zh" ? "服务条款" : "Terms"}</a>
+        <a href="/privacy.html">{locale === "zh" ? "隐私政策" : "Privacy"}</a>
+        <a href="/refund.html">{locale === "zh" ? "退款政策" : "Refunds"}</a>
+        <a href="/contact.html">{locale === "zh" ? "联系我们" : "Contact"}</a>
+      </nav>
     </footer>
   );
 }

@@ -123,6 +123,9 @@ export function Pricing() {
         ))}
       </div>
       <p className="pack-features">{t("shop.features")}</p>
+      <p className="purchase-note" hidden={!config?.billingReady}>
+        {t("shop.paymentMethod")}
+      </p>
       <p
         id="purchaseUnavailable"
         className="purchase-note"

@@ -5,16 +5,17 @@ export interface CommerceOptions {
   env?: Env;
   store?: AccountStore;
   fetcher?: typeof oauthFetch;
-  paddleClient?: Paddle;
+  paypalClient?: PayPalClient;
 }
 export type ReadBody = <T extends object = Record<string, unknown>>(
   req: IncomingMessage,
   limit?: number,
 ) => Promise<T>;
-import { Paddle, Environment } from "@paddle/paddle-node-sdk";
+import type { PayPalClient } from "./paypal-billing.ts";
 import { createHash } from "node:crypto";
 import { createAccounts, token, fault } from "./accounts.ts";
 import { oauthFetch } from "./oauth-fetch.ts";
+import { createPayPalBilling } from "./paypal-billing.ts";
 
 export function isAdmin(userId: string, env: Env = process.env) {
   return (env.ADMIN_USER_IDS || "")
@@ -56,7 +57,7 @@ export function createCommerce({
   env = process.env,
   store,
   fetcher = oauthFetch,
-  paddleClient,
+  paypalClient,
 }: CommerceOptions = {}) {
   const origin = new URL(env.APP_URL || `http://127.0.0.1:${env.PORT || 4173}`)
     .origin;
@@ -66,18 +67,8 @@ export function createCommerce({
     env.NODE_ENV !== "production" &&
     ["127.0.0.1", "localhost", "[::1]"].includes(new URL(origin).hostname);
   store ||= createAccounts(env.ACCOUNTS_DB || ".runtime/accounts.sqlite");
-  const environment =
-    env.PADDLE_ENVIRONMENT === "production" ? "production" : "sandbox";
-  const paddle =
-    paddleClient ||
-    (env.PADDLE_API_KEY
-      ? new Paddle(env.PADDLE_API_KEY, {
-          environment:
-            environment === "production"
-              ? Environment.production
-              : Environment.sandbox,
-        })
-      : null);
+  const billing = createPayPalBilling(env, store, paypalClient);
+  const environment = billing.environment;
   const providers = Object.keys(providerInfo).map((id) => ({
     id,
     enabled: Boolean(
@@ -85,13 +76,8 @@ export function createCommerce({
       env[id.toUpperCase() + "_CLIENT_SECRET"]!,
     ),
   }));
-  const ready = Boolean(
-    paddle &&
-    env.PADDLE_WEBHOOK_SECRET &&
-    env.PADDLE_CLIENT_TOKEN &&
-    plans.every((p) => env["PADDLE_PRICE_" + p.id.toUpperCase()]) &&
-    providers.some((p) => p.enabled),
-  );
+  const ready = billing.ready && providers.some((p) => p.enabled);
+  const checkoutAllowed = billing.allowed;
   const send = (res: ServerResponse, status: number, data: unknown) => {
     res.writeHead(status, {
       "content-type": "application/json; charset=utf-8",
@@ -176,11 +162,12 @@ export function createCommerce({
           isAdmin: Boolean(account && isAdmin(account.id, env)),
           designs: account ? await accounts.designs(account.id) : [],
           providers,
-          billingReady: ready,
+          billingReady: ready && checkoutAllowed(),
           localMode,
           plans,
           socials,
           paymentEnvironment: environment,
+          paymentProvider: "paypal",
         });
         return true;
       }
@@ -275,33 +262,30 @@ export function createCommerce({
       }
       if (req.method === "POST" && route === "/api/billing/checkout") {
         const account = await requireUser(req);
-        if (!ready || !paddle) throw fault("BILLING_UNAVAILABLE", 503);
+        if (!ready || !checkoutAllowed())
+          throw fault("BILLING_UNAVAILABLE", 503);
         await accounts.limitPlanning(account.id + ":checkout");
         const input = await readBody(req),
           plan = plans.find((p) => p.id === input.plan);
         if (!plan) throw fault("INVALID_PLAN");
-        const orderId = await accounts.order(account.id, plan);
-        const priceId = env["PADDLE_PRICE_" + plan.id.toUpperCase()]!;
-        const price = await paddle.prices.get(priceId);
-        if (
-          price.status !== "active" ||
-          price.billingCycle ||
-          price.unitPrice.currencyCode !== "USD" ||
-          Number(price.unitPrice.amount) !== plan.amount ||
-          price.taxMode !== "external" ||
-          price.unitPriceOverrides.length
-        )
-          throw fault("PRICE_NOT_CONFIGURED", 503);
-        const checkout = await paddle.transactions.create({
-          items: [{ priceId, quantity: 1 }],
-          currencyCode: "USD",
-          collectionMode: "automatic",
-          customData: { orderId, userId: account.id },
-          checkout: { url: `${origin}/checkout.html` },
-        });
-        await accounts.setCheckout(orderId, checkout.id);
         send(res, 200, {
-          url: `/checkout.html?transaction_id=${encodeURIComponent(checkout.id)}&locale=${input.locale === "zh" ? "zh" : "en"}`,
+          url: await billing.checkout(account.id, plan, origin, input.locale),
+        });
+        return true;
+      }
+      if (req.method === "POST" && route === "/api/billing/capture") {
+        const account = await requireUser(req);
+        const input = await readBody(req);
+        if (
+          typeof input.orderId !== "string" ||
+          !/^[A-Z0-9]{6,40}$/.test(input.orderId)
+        )
+          throw fault("ORDER_NOT_FOUND", 404);
+        await billing.capture(input.orderId, account.id);
+        const order = await accounts.checkoutOrder(input.orderId, account.id);
+        send(res, 200, {
+          paid: Boolean(order?.paid),
+          credits: (await accounts.user(account.id))!.credits,
         });
         return true;
       }
@@ -310,92 +294,22 @@ export function createCommerce({
           session = url.searchParams.get("session_id");
         const order = await accounts.checkoutOrder(session, account.id);
         if (!order) throw fault("ORDER_NOT_FOUND", 404);
-        // The signed webhook is the only path that grants credits.
+        // Read-only: only authoritative PayPal capture verification can grant credits.
         send(res, 200, {
           paid: Boolean(order.paid),
           credits: (await accounts.user(account.id))!.credits,
         });
         return true;
       }
-      if (req.method === "GET" && route === "/api/billing/config") {
-        const account = await requireUser(req),
-          transactionId = url.searchParams.get("transaction_id");
-        if (!(await accounts.checkoutOrder(transactionId, account.id)))
-          throw fault("ORDER_NOT_FOUND", 404);
-        if (!ready || !paddle) throw fault("BILLING_UNAVAILABLE", 503);
-        send(res, 200, {
-          token: env.PADDLE_CLIENT_TOKEN,
-          environment,
-          transactionId,
-        });
-        return true;
-      }
       if (req.method === "POST" && route === "/api/billing/webhook") {
-        if (!paddle || !env.PADDLE_WEBHOOK_SECRET)
-          throw fault("BILLING_UNAVAILABLE", 503);
-        const chunks = [];
+        const chunks: Buffer[] = [];
         let size = 0;
         for await (const chunk of req) {
           size += chunk.length;
           if (size > 1_000_000) throw fault("PAYLOAD_TOO_LARGE", 413);
-          chunks.push(chunk);
+          chunks.push(Buffer.from(chunk));
         }
-        let event;
-        try {
-          event = await paddle.webhooks.unmarshal(
-            Buffer.concat(chunks).toString("utf8"),
-            env.PADDLE_WEBHOOK_SECRET,
-            String(req.headers["paddle-signature"] || ""),
-          );
-        } catch {
-          throw fault("INVALID_SIGNATURE");
-        }
-
-        if (event.eventType === "transaction.completed") {
-          const data = event.data;
-          const plan = plans.find(
-            (p) =>
-              env["PADDLE_PRICE_" + p.id.toUpperCase()] ===
-              data.items?.[0]?.price?.id,
-          );
-          if (
-            !plan ||
-            data.items.length !== 1 ||
-            data.items[0].quantity !== 1 ||
-            data.subscriptionId ||
-            data.discountId ||
-            Number(data.details?.totals?.discount || 0) !== 0
-          )
-            throw fault("PAYMENT_MISMATCH");
-          await accounts.fulfill({
-            id: data.id,
-            orderId:
-              typeof data.customData?.orderId === "string"
-                ? data.customData.orderId
-                : undefined,
-            userId:
-              typeof data.customData?.userId === "string"
-                ? data.customData.userId
-                : undefined,
-            status: data.status,
-            currency: data.currencyCode,
-            amount: Number(data.details?.totals?.subtotal),
-          });
-        }
-        if (
-          (event.eventType === "adjustment.created" ||
-            event.eventType === "adjustment.updated") &&
-          event.data.action === "refund" &&
-          event.data.status === "approved"
-        ) {
-          const data = event.data;
-          if (data.currencyCode !== "USD") throw fault("PAYMENT_MISMATCH");
-          await accounts.refund({
-            id: data.id,
-            session: data.transactionId,
-            amount: Math.abs(Number(data.totals?.subtotal)),
-          });
-        }
+        await billing.webhook(Buffer.concat(chunks), req.headers);
         send(res, 200, { received: true });
         return true;
       }

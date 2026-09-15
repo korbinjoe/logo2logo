@@ -404,9 +404,8 @@ export function createCloudApp(options: CloudAppOptions = {}) {
             plans,
             socials: socialLinks(env),
             paymentEnvironment:
-              env.PADDLE_ENVIRONMENT === "production"
-                ? "production"
-                : "sandbox",
+              env.PAYPAL_ENVIRONMENT === "live" ? "live" : "sandbox",
+            paymentProvider: "paypal",
           });
         }
         if (req.method === "GET" && route === "/api/health") {

@@ -15,11 +15,12 @@
     "format": "prettier --write src lib api server.ts scripts/cloud-server.ts vite.config.ts tsconfig*.json index.html checkout.html",
     "format:check": "prettier --check src lib api server.ts scripts/cloud-server.ts vite.config.ts tsconfig*.json index.html checkout.html",
     "db:migrate": "node scripts/migrate-cloud.mjs",
-    "paddle:setup": "node scripts/setup-paddle.ts",
     "dev:cloud": "node scripts/cloud-server.ts",
     "check:cloud": "node scripts/check-cloud.mjs",
     "check:bundle": "node scripts/check-bundle.mjs",
-    "typecheck:server": "tsc -p tsconfig.server.json"
+    "typecheck:server": "tsc -p tsconfig.server.json",
+    "paypal:setup": "node scripts/setup-paypal.ts",
+    "paypal:check": "node scripts/check-paypal.ts"
   },
   "engines": {
     "node": "24.x"
@@ -28,7 +29,6 @@
     "@aws-sdk/client-s3": "^3.1128.0",
     "@fal-ai/client": "^1.10.1",
     "@libsql/client": "^0.18.0",
-    "@paddle/paddle-node-sdk": "^3.10.0",
     "cloudinary": "^2.11.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

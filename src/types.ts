@@ -91,6 +91,7 @@ export interface AccountResponse {
   localMode: boolean;
   billingReady: boolean;
   paymentEnvironment?: string;
+  paymentProvider?: "paypal";
   providers: { id: ProviderId; enabled: boolean }[];
   plans: CreditPlan[];
   socials: Partial<Record<"github" | "x" | "youtube", string>>;

@@ -626,3 +626,14 @@ test("fal top-up rejection has an actionable public code and refunds the reserva
   assert.equal((await store.user(user.id)).credits, 18);
   assert.equal(calls, 1);
 });
+
+test("remote cumulative Stripe refunds survive retries and stale snapshots", async t => {
+  const {store, open} = await setup(t), {user, payment} = await funded(store, "stripe-refund");
+  const refund = {id: "stripe:pi_refund", session: payment.id, cumulative: true, amount: 600};
+  await store.refund(refund);
+  const cold = open();
+  await cold.refund({...refund, amount: 1200});
+  await store.refund(refund);
+  await cold.refund({...refund, amount: 1200});
+  assert.equal((await store.user(user.id)).credits, 0);
+});

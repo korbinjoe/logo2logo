@@ -4,7 +4,7 @@
 
 前后端统一使用 **TypeScript（strict）**，前端为 **React 19 + Vite 8**，服务端为 **Node.js 24 + TypeScript**。页面与结账页分别构建，React 组件管理图库、参考版本、简报、流式生成、草稿画布、外观、语言与账户状态。支持两种全栈运行方式：本地 Node.js + SQLite + MFLUX，以及 **Vercel Functions + Turso 数据库 + R2 私有图片存储 + fal 云端出图**。
 
-Vercel 部署已配置 `vercel.json` 与 `api/index.ts`。账户、订单、额度、历史与规划检查点持久化到云数据库，图片独立存储；OAuth、Paddle 签名回调和所属账户权限在服务端执行。部署步骤、环境变量、迁移与验收见 [Vercel 全栈部署](docs/vercel-deployment.md)。现有 `.env` 与本机图片不会自动上传，云资源和真实密钥需要自行配置。
+Vercel 部署已配置 `vercel.json` 与 `api/index.ts`。账户、订单、额度、历史与规划检查点持久化到云数据库，图片独立存储；OAuth、PayPal 签名回调和所属账户权限在服务端执行。部署步骤、环境变量、迁移与验收见 [Vercel 全栈部署](docs/vercel-deployment.md)。现有 `.env` 与本机图片不会自动上传，云资源和真实密钥需要自行配置。
 
 ```bash
 npm install
@@ -28,11 +28,11 @@ npm test           # 构建 + 自动化测试
 
 ## 登录、套餐与额度
 
-首页提供 GitHub、X、YouTube 入口（YouTube 地址待配置），以及双语 Pricing 和账户弹窗。Google/GitHub OAuth 登录和 Paddle Billing 一次性购买已实现，真实登录/收款需要配置并激活自己的第三方账户。配置缺失时明确显示暂未开放，默认不会绕过付费校验。
+首页提供 GitHub、X、YouTube 入口（YouTube 地址待配置），以及双语 Pricing 和账户弹窗。Google/GitHub OAuth 登录和 PayPal Checkout 一次性购买已实现，真实登录/收款需要配置并激活自己的第三方账户。配置缺失时明确显示暂未开放，默认不会绕过付费校验。
 
-Starter $12 / 18 次、Creator $24 / 60 次、Studio $59 / 180 次；无自动续费，额度不设到期日。一张交付图片消耗一次，完整探索三张消耗三次，技术失败自动返还。价格从后端统一提供，付款仅经签名回调确认入账。SQLite 持久化用户、会话、订单、余额及图片权限，输出文件仅可由所属账户访问。
+Starter $12 / 18 次、Creator $24 / 60 次、Studio $59 / 180 次；无自动续费，额度不设到期日。一张交付图片消耗一次，完整探索三张消耗三次，技术失败自动返还。价格从后端统一提供，付款由服务端核对 PayPal capture 结果后入账，Webhook 需通过官方验签。SQLite 持久化用户、会话、订单、余额及图片权限，输出文件仅可由所属账户访问。
 
-需要 **Node.js 24+**。详细步骤、Google/GitHub 回调地址、Paddle Sandbox 配置、提现适用性及正式启用条件见 [登录与收款配置](docs/commerce-setup.md)。环境字段见 [.env.example](.env.example)，补充现有 `.env` 时保留已配置的模型密钥。
+需要 **Node.js 24+**。详细步骤、Google/GitHub 回调地址、PayPal 沙盒配置、提现适用性及正式启用条件见 [登录与收款配置](docs/commerce-setup.md)。环境字段见 [.env.example](.env.example)，补充现有 `.env` 时保留已配置的模型密钥。
 
 ## 国际化
 

@@ -16,7 +16,8 @@
   "include": [
     "server.ts",
     "scripts/cloud-server.ts",
-    "scripts/setup-paddle.ts",
+    "scripts/setup-paypal.ts",
+    "scripts/check-paypal.ts",
     "api/**/*.ts",
     "lib/**/*.ts"
   ]

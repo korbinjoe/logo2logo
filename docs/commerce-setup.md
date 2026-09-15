@@ -12,27 +12,19 @@ Vercel / 云端后台地址：`https://logo2logo.vercel.app/admin.html`。先在
 
 数据库原始数据可在 [Turso 控制台](https://app.turso.tech/) 中打开 `logo2logo` 数据库查看。日常调整额度使用上述后台，让余额和流水保持一致，不要单独修改 `users.credits`。
 
-当前代码具备 Google/GitHub 登录、Paddle 一次性结账、签名回调、持久化额度账本和生成权限校验。尚未填写凭据时，登录和购买会明确显示暂未开放，不会模拟登录或支付成功。
+当前代码具备 Google/GitHub 登录、PayPal Checkout 一次性结账、签名回调、持久化额度账本和生成权限校验。尚未填写凭据时，登录和购买会明确显示暂未开放，不会模拟登录或支付成功。
 
-## 本次支付选择
+## 当前支付选择与账户状态
 
-以中国内地个人、暂无公司为前提，优先申请 Paddle。其官方说明允许个人开发者进行身份验证，中国内地不在供应商禁用名单中。民生银行香港账户能否作为该内地主体的结算账户，需在 Paddle 入驻时确认；香港银行卡本身不能代替身份或经营主体审核。Paddle 支持银行电汇或 Payoneer 提现，通常按月结算，最低提现门槛为 $100；具体入账费用和账户要求以平台及银行确认为准。
+当前支付提供方为 PayPal。商户通过 paypal.cn 的个人卖家入口申请全球收单，网站通过 PayPal 全球 REST API 接入 Checkout；不要将 API 请求发往 paypal.cn。
 
-Stripe 香港个人开户不接受非香港身份证号码，因此本项目没有将“持有香港卡”视作可直接使用 Stripe 的条件。代码默认使用 Paddle Billing，不包含 Stripe 结账路径。
-
-官方依据：
-
-- [Paddle 个人与企业验证](https://www.paddle.com/help/start/account-verification/what-is-account-verification)
-- [Paddle 供应商地区](https://www.paddle.com/help/legal/sanctions/which-countries-are-supported-by-paddle)
-- [Paddle 提现方式和门槛](https://www.paddle.com/help/manage/get-paid/when-and-how-do-i-get-paid)
-- [Paddle 费率](https://www.paddle.com/paddle-101)
-- [Stripe 香港开户要求](https://support.stripe.com/questions/requirements-for-hong-kong-based-businesses?locale=en-GB)
+截至 2026-09-16，本机 Sandbox 凭据已配置并通过真实沙盒付款、验签回调与退款测试。全球收单审核是否获批仍待确认，正式收款未启用。历史 Paddle / Stripe 验收文档和订单保留；原 Stripe SDK 与运行入口已移除，旧环境密钥不再用于收款。本次没有修改远程 Stripe/Paddle 账户。
 
 ## 1. 服务地址和存储
 
 需要 Node.js 24+。在现有 `.env` 中补充 `.env.example` 的对应字段，保留已经配置的模型密钥。不要将任何 Client Secret、API Key 或 Webhook Secret 放进 `public/` 或 Git。
 
-OAuth 的令牌交换和用户资料请求支持启动环境中的 `https_proxy` / `http_proxy` / `no_proxy`（也支持大写）。需要本机代理时，启动服务前设置对应环境变量；服务不会自动读取 macOS 系统代理。此设置仅用于 OAuth 服务端请求。
+OAuth 的令牌交换和用户资料请求支持启动环境中的 `https_proxy` / `http_proxy` / `no_proxy`（也支持大写）。需要本机代理时，启动服务前设置对应环境变量；服务不会自动读取 macOS 系统代理。OAuth 与 PayPal REST API 的服务端请求均使用该代理配置。
 
 - 本地：`APP_URL=http://127.0.0.1:4173`。
 - 正式环境：`APP_URL=https://你的域名`，启动时设置 `NODE_ENV=production`，通过 HTTPS 反向代理转发到本机 4173 端口。
@@ -64,81 +56,75 @@ Google 申请 `openid profile`，GitHub 申请 `read:user`，只使用提供方�
 
 官方流程：[Google](https://developers.google.com/identity/protocols/oauth2/web-server)、[GitHub](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps)。
 
-## 3. Paddle Sandbox
+## 3. PayPal 配置
 
-### 自动配置
-
-已提供基于 Paddle 官方 `catalog-setup`、`checkout-web`、`webhooks` 和 `sandbox-testing` 技能的配置脚本。默认只展示计划，不请求 Paddle：
-
-```bash
-npm run paddle:setup
-```
-
-在本机 `.env` 中设置 `PADDLE_SANDBOX_API_KEY` 和 `PADDLE_SETUP_URL` 后执行：
-
-```bash
-npm run paddle:setup -- --apply
-```
-
-`PADDLE_SETUP_URL` 必须是用于测试的 HTTPS 站点源地址，不含路径或末尾斜杠。脚本拒绝正式 API Key，使用当前代码中的三个一次性 USD 额度包，税类为 `saas`、税额另加、购买数量限定为 1。它会复用带有 Logo2logo 标记的商品及匹配价格，创建或复用客户端 Token，并配置 `transaction.completed`、`adjustment.created`、`adjustment.updated` 回调。多条同目标回调等歧义会停止执行。
-
-配置 Key 需要 Products、Prices、Client-side tokens、Notification settings 的读写权限。后续结账需要 Transactions 读写；回调测试和退款验证分别需要 Notifications、Notification simulations、Adjustments 权限。默认支付链接需要在 Paddle 后台设为 `PADDLE_SETUP_URL/checkout.html`。 如果 API 报 `transaction_checkout_url_domain_is_not_approved`，还需在 Checkout → Website Approval 单独登记测试域名；本账户沙盒登记后即时显示 Approved，仅保存默认支付链接不会自动完成登记。
-
-生成结果保存在被 Git 忽略的 `.env.paddle-sandbox`（权限 0600），每次执行会重新生成此文件，终端只输出商品和价格 ID。这个文件是配置结果，不会被应用自动加载；脚本不会修改现有 `.env`、部署环境或开启公开站点购买。应先用于独立的测试部署与数据库，再验证真实沙盒结账、回调入账、退款与重试。脚本成功仅代表资源已配置，不等于端到端支付验证成功。
-
-先建立 Sandbox 账户，在目录中创建三项 **一次性** USD 价格：
-
-| 环境变量 | 套餐 | 单价（美元分） | 额度 |
-| --- | --- | --- | --- |
-| `PADDLE_PRICE_STARTER` | Starter | 1200 | 18 |
-| `PADDLE_PRICE_CREATOR` | Creator | 2400 | 60 |
-| `PADDLE_PRICE_STUDIO` | Studio | 5900 | 180 |
-
-价格设为 `billing_cycle=null`、`tax_mode=external`、active；不要添加地区价格覆盖或折扣。数量限定为 1。结账前服务器会核对价格，回调再次核对订单、账户、交易 ID、数量、USD 税前金额及无订阅/折扣，不能通过修改前端价格或额度绕过校验。税额由结账计算并另行展示。
+一次性 USD 额度包由服务端确定价格，无需在 PayPal 预建商品或价格：Starter $12 / 18 次、Creator $24 / 60 次、Studio $59 / 180 次。当前按上述固定总额收款，不包含自动计算销售税的功能。
 
 ```dotenv
-PADDLE_ENVIRONMENT=sandbox
-PADDLE_API_KEY=
-PADDLE_CLIENT_TOKEN=
-PADDLE_WEBHOOK_SECRET=
-PADDLE_PRICE_STARTER=pri_...
-PADDLE_PRICE_CREATOR=pri_...
-PADDLE_PRICE_STUDIO=pri_...
+PAYPAL_ENVIRONMENT=sandbox
+PAYPAL_CLIENT_ID=
+PAYPAL_CLIENT_SECRET=
+PAYPAL_MERCHANT_ID=
+PAYPAL_WEBHOOK_ID=
+PAYPAL_CHECKOUT_ENABLED=false
+PAYPAL_WEBHOOK_URL=https://你的测试域名/api/billing/webhook
 ```
 
-API Key 至少需要读取价格、创建交易的权限。客户端 Token 是 Paddle.js 的公开 token，API Key 和 webhook secret 始终仅在服务端使用。需要至少启用一种真实登录方式，购买才会开放。
+- 在 [PayPal Developer Apps & Credentials](https://developer.paypal.com/dashboard/applications) 中获取自己的 REST App 凭据；沙盒和正式环境分别配置。Client ID、Secret、商户 ID 与 Webhook 必须属于同一环境和相应商户/App。
+- `PAYPAL_MERCHANT_ID` 是实际收款商户的 PayPal Merchant ID，不是登录邮箱、Client ID、Payer ID 参数或银行卡号。沙盒使用对应 Sandbox Business 账户的商户 ID。
+- `PAYPAL_WEBHOOK_ID` 是 App 的通知目标 ID，不是 Secret 或事件 ID。此方案使用服务端 OAuth 和托管跳转，不需要在浏览器中放任何密钥。
+- `PAYPAL_ENVIRONMENT=sandbox` 使用 `https://api-m.sandbox.paypal.com`；`live` 使用 `https://api-m.paypal.com`。没有凭据或环境值拼错时购买保持关闭。
+- `PAYPAL_CHECKOUT_ENABLED=true` 只在实际审核通过并准备正式收款后启用。沙盒不受此发布开关限制，但仍需齐全的沙盒配置。此开关只控制创建新订单，已批准订单与支付/退款通知仍可完成核对。
+- 不自动开通银行卡、Apple Pay 等独立产品；本次先接 PayPal 托管付款，付款方式以商户资格和买家结账页面为准。
 
-设置默认结账页为 `APP_URL/checkout.html`，并按 Paddle 要求配置/批准域名。创建通知目标 `APP_URL/api/billing/webhook`，订阅：
+### 配置 Webhook
 
-- `transaction.completed`：完成支付后发放额度。
-- `adjustment.created`、`adjustment.updated`：批准退款后按退款税前金额比例撤销对应额度。
+通知地址必须是公开可访问的 HTTPS：`https://你的域名/api/billing/webhook`。订阅事件：
 
-本地测试需要把 webhook 转发到本机，或使用自己控制的 HTTPS 测试部署。Sandbox 与正式环境必须使用各自对应的 API Key、客户端 Token、价格和通知 Secret。
+- `CHECKOUT.ORDER.APPROVED`
+- `PAYMENT.CAPTURE.COMPLETED`
+- `PAYMENT.CAPTURE.REFUNDED`
+- `PAYMENT.CAPTURE.REVERSED`
 
-流程：登录 → 选套餐 → 后端创建交易 → Paddle.js 结账 → 带签名 webhook 入账 → 返回页查询到账状态。返回页参数和浏览器的 `checkout.completed` 事件只触发查询，不能授予额度。回调去重以订单为单位；退款以 adjustment ID 去重，支持退款通知早于支付完成通知。付款回调金额不匹配时拒绝发放额度，应核对实际订单后通过 Paddle 处理，不要在浏览器手工补额度。
+可在 App 后台配置，或者运行：
 
-额度规则：生成一张交付图片扣 1 次，包括初筛不通过的草稿；完整探索三方向最多扣 3 次。重绘、微调每张各扣 1 次；技术失败自动返还。每个账户同时只允许一张图生成，余额变动用事务防止超扣。新探索要求至少 3 次余额。设计规划每账户每小时最多 20 次，结账每账户每小时最多 20 次。已消费后发生退款可产生负余额，余额不足时不能继续生成。账户菜单提供最近 12 张原始生成图；浏览器手动调色需要自行下载。
-
-官方实现依据：[创建交易](https://developer.paddle.com/api-reference/transactions/create-transaction/)、[验签](https://developer.paddle.com/webhooks/about/signature-verification/)、[付款完成事件](https://developer.paddle.com/webhooks/transactions/transaction-completed/)、[Paddle.js](https://developer.paddle.com/paddle-js/methods/paddle-checkout-open/)。
-
-## 4. 正式启用
-
-先完成 Paddle 实际身份、域名、产品和结算账户审核，并提供与你真实经营信息一致的隐私政策、服务条款、退款政策及支持联系方式。政策需描述实际使用的模型供应商、账户与输出数据处理方式；本任务没有代填身份信息或虚构法律主体，也没有提交平台申请。
-
-Sandbox 用测试付款完成登录、购买、到账、生成扣减、退款和重复 webhook 验证后，再替换为正式凭据并设置 `PADDLE_ENVIRONMENT=production`。没有真实凭据时，本地自动化只验证模拟的 OAuth/Paddle 交互和真实 SDK 的验签，不代表商户已获准收款。
-
-## 社交入口
-
-GitHub 和 X 已使用用户指定地址；YouTube 未提供时显示灰色待开放图标，不指向平台首页或虚构账号。
-
-```dotenv
-SOCIAL_GITHUB_URL=https://github.com/korbinjoe/logo2logo
-SOCIAL_X_URL=https://x.com/korbinjoe
-SOCIAL_YOUTUBE_URL=
+```bash
+npm run paypal:setup
+npm run paypal:setup -- --apply
+npm run paypal:check
 ```
 
-修改配置后重启服务。`GET /api/account` 仅返回登录状态、公开套餐、公开社交地址及提供方是否可用，不返回私密凭据。
+`setup` 默认仅显示预览；`--apply` 才创建缺失通知目标，相同 URL 已存在则复用并检查事件，不修改已有目标。结果写入 Git 忽略的 `.env.paypal-sandbox` / `.env.paypal-live`（0600），需合并到运行环境。`check` 只读验证 OAuth 凭据、Webhook URL 和事件列表，不创建支付，也不能证明商户身份、审核获批、付款或提现成功。
 
-## 沙盒验收记录
+### 本地沙盒实付验收
 
-实际 Paddle.js 结账、拒付、签名回调和重复通知的验证结果见 [paddle-sandbox-verification.md](paddle-sandbox-verification.md)。沙盒验收与正式收款开通分别记录，不以后台向导的完成勾选代替测试证据。
+1. 使用隔离的本地数据库与 Sandbox App；设置本地 `APP_URL`，例如 `http://127.0.0.1:4173`。不要将本地测试数据写入生产数据库。
+2. 将一个公开 HTTPS 隧道转发到本地端口，用它配置 `PAYPAL_WEBHOOK_URL`。只供沙盒测试，不能把 PayPal 后台 Webhook 直接设成 localhost。
+3. 配置凭据并重启服务；用本站 Google/GitHub 账号登录，选套餐后进入 `www.sandbox.paypal.com`，使用独立 Sandbox Personal 买家账户完成测试付款。
+4. 验证取消、付款后返回、付款后关闭页面（由 APPROVED 通知补完成 capture）、重复 capture、重复通知、待处理转成功、部分/全额退款。
+5. 从商户沙盒后台发起测试退款，确认已支付额度按累计金额比例撤销。不要用真实银行卡或 Live 环境做沙盒测试。
+
+## 4. 付款与退款处理
+
+流程：本站登录 → 选套餐 → 服务端创建 Orders v2 订单并绑定本地订单 → PayPal 托管页面批准付款 → 返回后 POST capture，或由已验签的 APPROVED 通知补完成 capture → 服务端查询实际订单与扣款结果 → 额度到账。
+
+- URL 中的 `token` 只是 PayPal 订单编号，不是付款证明。capture 路由先检查本站会话及订单所有者；普通状态查询始终只读。
+- capture 使用稳定 `PayPal-Request-Id`，重复或并发请求不重复扣款；若已 capture，则重新读取实际状态。
+- 服务端验证 USD 总额、收款商户 ID、订单/用户绑定、唯一完整 capture 和状态。PENDING、DECLINED、FAILED 均不授予额度。
+- Webhook 将 PayPal 签名头、事件和本站 Webhook ID 提交官方验签接口；只有 SUCCESS 才处理，并重新请求订单/capture/refund 的权威数据。生产环境不会接受沙盒模拟通知作为付款证明。
+- 退款使用同一 capture 下的累计快照；SQLite / libSQL 原子记账，金额只增不减。通知重复、乱序、退款先于付款、全额撤销均不会重复扣减或恢复额度。已消耗额度的退款可形成负余额。
+- 退款仍由客服人工审核并通过 PayPal 商户后台处理，本站通知接口只同步结果，不自动发起退款。
+- 订单金额固定；自动税务计算和申报不在本次实现中。上线前根据实际业务确认税务处理。
+
+官方参考：[创建订单](https://developer.paypal.com/api/orders/v2/orders-create)、[Webhook 验签](https://developer.paypal.com/api/webhooks/v1/verify-webhook-signature-post)、[Capture](https://developer.paypal.com/api/payments/v2/captures-get)、[Refund](https://developer.paypal.com/api/payments/v2/refunds-get)。
+
+## 5. 正式启用
+
+1. 等待 paypal.cn 全球收单申请获批，确认 AI Logo 生成业务、实际付款方式和人民币提现能力。
+2. 使用该商户对应的 Live App 配置凭据、商户 ID 与线上 Webhook。设置 `PAYPAL_ENVIRONMENT=live`，开始时保持 `PAYPAL_CHECKOUT_ENABLED=false`。
+3. 配置 Vercel 的上述变量并部署；`.env` 的变更不会自动同步到 Vercel。正式 Webhook 地址为 `https://logo2logo.vercel.app/api/billing/webhook`。
+4. 完成沙盒实付验收，确认业务信息、客服、政策与税务安排后，开启正式购买开关。
+
+当前已完成真实 PayPal 沙盒付款、官方验签回调与退款测试；全球收单审核状态、生产部署、Live 付款和实际提现尚未完成验证。
+
+初次构建、97 项测试及本地页面检查见 [初始验证记录](paypal-local-test-20260915.md)。真实沙盒端到端验收及最新构建检查见 [2026-09-16 沙盒验收](paypal-sandbox-test-20260916.md)。
